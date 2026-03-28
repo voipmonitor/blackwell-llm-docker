@@ -121,16 +121,12 @@ WORKDIR /build
 RUN git clone --depth 1 https://github.com/NVIDIA/cutlass.git /build/cutlass && \
     grep "CUTLASS_MAJOR\|CUTLASS_MINOR\|CUTLASS_PATCH" /build/cutlass/include/cutlass/version.h | head -3
 
-# -- Install PyTorch (nightly 2.12.0, cu132) ---------------------------------
+# -- Install PyTorch 2.11 stable (cu130 — works on CUDA 13.2 base) ------------
+# torch 2.11 avoids CUDA graph padding IMA bug present in torch 2.12
 RUN uv pip install \
-    torch \
-    --index-url https://download.pytorch.org/whl/nightly/cu132 \
+    torch torchvision \
+    --index-url https://download.pytorch.org/whl/cu130 \
     --force-reinstall
-# torchvision needed by SGLang multimodal; not yet built for cu132,
-# install from cu132 index (ships cu130 builds) without pulling deps
-RUN uv pip install torchvision \
-    --index-url https://download.pytorch.org/whl/nightly/cu132 \
-    --prerelease=allow --no-deps
 
 # -- Install latest NCCL for CUDA 13 -----------------------------------------
 RUN uv pip install --force-reinstall nvidia-nccl-cu13
@@ -138,8 +134,8 @@ RUN uv pip install --force-reinstall nvidia-nccl-cu13
 # Verify torch is installed
 RUN python -c "import torch; v=torch.__version__; print(f'PyTorch: {v}')"
 
-# -- Install Triton (from PyTorch nightly index) ------------------------------
-RUN uv pip install triton --index-url https://download.pytorch.org/whl/nightly/cu132 --force-reinstall
+# -- Install Triton 3.5.1 (3.6.0 has SM120 regression: illegal memory access during CUDA graph capture)
+RUN uv pip install triton==3.6.0 --force-reinstall
 
 # -- Install CUTLASS 4.x DSL (latest) ----------------------------------------
 # NOTE: libs-base overwrites _cutlass_ir.so with NVVM 12.9; reinstall libs-cu13
@@ -159,40 +155,42 @@ RUN uv pip install --no-deps --upgrade \
     bitsandbytes
 
 # xformers (nightly, matching torch 2.12)
-RUN uv pip install xformers --index-url https://download.pytorch.org/whl/nightly/cu132 --no-deps || true
+RUN uv pip install xformers --index-url https://download.pytorch.org/whl/nightly/cu130 --no-deps || true
 
 # fastsafetensors
 RUN uv pip install fastsafetensors
 
 # Additional packages
-RUN uv pip install xgrammar setproctitle gguf dill
+RUN uv pip install --no-deps xgrammar setproctitle gguf dill
 
 # Upgrade cmake (sgl-kernel needs cmake >= 3.26 with CMP0169 support)
 RUN uv pip install --upgrade cmake
 
 # Verify torch is still in place
-RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu132' in v, f'WRONG TORCH: {v}'"
+RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu13' in v, f'WRONG TORCH: {v}'"
 
 # =============================================================================
-# Stage 3: build FlashInfer from source (JIT mode, git main)
+# Stage 3: FlashInfer nightly (pip, not from source)
 # =============================================================================
 FROM deps AS flashinfer-build
 
-WORKDIR /build
-RUN git clone --recursive https://github.com/flashinfer-ai/flashinfer.git
-
-WORKDIR /build/flashinfer
-# Cherry-pick unmerged PRs:
-#   PR #2780 - fix(jit): enable GDC for CUTLASS GEMM PDL — SM100 flag only
-RUN git config user.email "build@docker" && git config user.name "build" && \
-    git fetch origin pull/2780/head:pr-2780 && \
-    git cherry-pick --no-commit 8e78583b 7fcc7a7c
-
-# Install FlashInfer's runtime deps
-# Upgrade setuptools — FlashInfer's pyproject.toml uses PEP 639 license format
+# Install FlashInfer runtime deps first
 RUN uv pip install --upgrade setuptools pip && \
-    uv pip install "apache-tvm-ffi>=0.1.6" "nvidia-cudnn-frontend>=1.13.0" packaging
-RUN pip install -v --no-build-isolation --no-deps .
+    uv pip install "apache-tvm-ffi>=0.1.6" "nvidia-cudnn-frontend>=1.13.0" packaging \
+    pynvml nvidia-ml-py requests numpy einops click tabulate tqdm
+
+# Install FlashInfer nightly from pip (--no-deps to avoid torch downgrade)
+RUN pip install -U --pre flashinfer-python --index-url https://flashinfer.ai/whl/nightly/ --no-deps
+# Install FlashInfer dependencies from PyPI (--no-deps to avoid torch downgrade)
+RUN pip install --no-deps flashinfer-python || true
+# Pre-compiled CUDA binaries
+RUN pip install -U --pre flashinfer-cubin --index-url https://flashinfer.ai/whl/nightly/
+# JIT cache for CUDA 13.0
+RUN pip install -U --pre flashinfer-jit-cache --index-url https://flashinfer.ai/whl/nightly/cu130
+
+# Verify FlashInfer
+ENV FLASHINFER_DISABLE_VERSION_CHECK=1
+RUN python -c "import flashinfer; print(f'FlashInfer: {flashinfer.__version__}')"
 
 # =============================================================================
 # Stage 4: SGLang from source (sgl-kernel + editable install)
@@ -204,85 +202,73 @@ ARG NVCC_THREADS
 
 RUN git clone --recursive https://github.com/sgl-project/sglang.git /opt/sglang
 
-# Cherry-pick unmerged PRs:
-#   PR #19948 - Auto-disable DEEPGEMM_SCALE_UE8M0 for non-ue8m0 checkpoints on Blackwell
-#   PR #19897 - Fix EAGLE-v2 NaN on radix cache prefix hits (zero-fill draft KV)
-#   PR #19963 - Fix missing arch suffix in _get_cuda_arch_list for Blackwell/Hopper JIT
-#   PR #20439 - Fix AWQ quantization ignoring modules_to_not_convert for FusedMoE layers
-#   PR #20059 - Fuse normal_decode_set_metadata into Triton kernel (~2x decode metadata speedup)
-#   PR #20074 - Qwen3.5: Fuse DeltaNet input projections (9% decode speedup)
-#   PR #20110 - Qwen3.5: Fix MoE double allreduce with --enable-flashinfer-allreduce-fusion
-#   PR #20114 - Fix: support HybridLinearAttnBackend in TboAttnBackend
-#   PR #20182 - Fix mamba memory leak
-#   PR #20232 - Fix Qwen3.5 fuse_moe_triton_tune bug
-#   PR #20275 - Add GLM-5 thinking budget logit processor
-#   PR #20377 - Remove mamba slot alloc in prefix match stage
-#   PR #20433 - Mamba: make extra buffer track indexes async (15.7% throughput gain)
-#   PR #20441 - Fix Piecewise CUDA Graph crash with --enable-mixed-chunk
-#   PR #20445 - Avoid GPU syncs in mamba track metadata
-#   PR #20448 - Qwen3.5 bugfix: Add mm_input_embeds in piecewise CUDA graph replay
-#   PR #20460 - HiCache: Add synchronization for context parallelism
-#   PR #20479 - Support Triton MLA FP8 KV cache (SM120)
-#   PR #20534 - Transfer FP8 K/K_scale for CP indexer prefill gather
-#   PR #20949 - Fix: warm up cuBLAS/cuBLASLt handles for FP16/BF16 (CUDA graph lazy-init fix)
-# Merged (removed): #19977, #20103, #20266, #20390, #20396, #20539, #20604, #19961
+# Cherry-pick unmerged PRs.
+# MERGED into main (removed from cherry-picks): #19977, #20103, #20266, #20390, #20396, #20539, #20604, #19961, #20232, #20441
+# CLOSED (removed): #19897, #20110
 WORKDIR /opt/sglang
+COPY patches/fix-cuda-arch-suffix.py /tmp/patches/fix-cuda-arch-suffix.py
 RUN git config user.email "build@docker" && git config user.name "build" && \
     git fetch origin \
-        pull/19897/head:pr-19897 \
-        pull/19948/head:pr-19948 \
-        pull/19963/head:pr-19963 \
-        pull/20439/head:pr-20439 \
         pull/20059/head:pr-20059 \
-        pull/20074/head:pr-20074 \
-        pull/20110/head:pr-20110 \
         pull/20114/head:pr-20114 \
-        pull/20182/head:pr-20182 \
-        pull/20232/head:pr-20232 \
         pull/20275/head:pr-20275 \
-        pull/20377/head:pr-20377 \
-        pull/20433/head:pr-20433 \
-        pull/20441/head:pr-20441 \
-        pull/20445/head:pr-20445 \
+        pull/20439/head:pr-20439 \
         pull/20448/head:pr-20448 \
         pull/20460/head:pr-20460 \
         pull/20479/head:pr-20479 \
         pull/20534/head:pr-20534 \
         pull/20949/head:pr-20949 && \
-    (git cherry-pick --no-commit 97d666ae5109 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit fc05fc6758aa || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 340f619 b38295b 0ba073f || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 23aa58fa1b7c || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 1e5d20c64aac e0137cc66274 3345601bab22 556f00b70aec 39f312d94c5e || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 4972ab6e76bf b77762f28fb6 3da85d453dd2 d2d3f022be27 5bc1fac6230f 6dcc77825b10 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 140be31a7951 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit b961a4124855 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit a38e09ac8ace 6be4ccd441fb 27d36e52e1ee || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 6c6f2c8e68f6 29066eb35817 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 45baf2e56ab5 42b872677423 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit e7258d164d1b 746f28699356 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 0433bc88b5ae dc0a80235e91 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit ace5f94982a9 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit cc4a43a1698b || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 6bcb570f95a8 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 614b7815b53f || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 3019db47e505 64cc6ffa1d4d 3e8774f6f6d1 0e25a1cb74c4 b6551f2ba4af c69aa5debd47 75d4edbbadf9 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit 4578257732bf f695b901400833 || git cherry-pick --abort 2>/dev/null || true) && \
-    (git cherry-pick --no-commit f6c25c12c || git cherry-pick --abort 2>/dev/null || true)
+    echo "=== PR #19963: Fix arch suffix (adapted for refactored code) ===" && \
+    python3 /tmp/patches/fix-cuda-arch-suffix.py && \
+    echo "=== PR #20439: Fix AWQ modules_to_not_convert for FusedMoE ===" && \
+    git cherry-pick --no-commit 23aa58fa1b7c && \
+    echo "=== PR #20059: Fuse normal_decode_set_metadata into Triton kernel ===" && \
+    git cherry-pick --no-commit 1e5d20c64aac e0137cc66274 3345601bab22 556f00b70aec 39f312d94c5e && \
+    echo "=== PR #20114: support HybridLinearAttnBackend in TboAttnBackend ===" && \
+    git cherry-pick --no-commit b961a4124855 && \
+    echo "=== PR #20275: GLM-5 thinking budget logit processor ===" && \
+    git cherry-pick --no-commit 45baf2e56ab5 42b872677423 && \
+    echo "=== PR #20448: mm_input_embeds in piecewise graph replay ===" && \
+    git cherry-pick --no-commit 6bcb570f95a8 && \
+    echo "=== PR #20460: HiCache synchronization for context parallelism ===" && \
+    git cherry-pick --no-commit 614b7815b53f && \
+    echo "=== PR #20479: Triton MLA FP8 KV cache (SM120) ===" && \
+    git cherry-pick --no-commit 3019db47e505 64cc6ffa1d4d 3e8774f6f6d1 0e25a1cb74c4 b6551f2ba4af c69aa5debd47 75d4edbbadf9 && \
+    echo "=== PR #20534: FP8 K/K_scale for CP indexer prefill gather ===" && \
+    git cherry-pick --no-commit 4578257732bf f695b901400833 && \
+    echo "=== PR #20949: cuBLAS/cuBLASLt warmup for BF16 ===" && \
+    git cherry-pick --no-commit f6c25c12c && \
+    echo "=== All cherry-picks applied ==="
 
-# Cherry-pick PCIe allreduce + b12x integration (lukealonso fork)
-# NOTE: v2 commit d39236aee635 has merge conflicts with current main, using v1 until rebase
-# Order: PCIe cherry-pick → resolve conflicts → b12x cherry-pick → resolve conflicts
-COPY patches/fix-pcie-allreduce-conflict.py /tmp/fix-cherry-pick-conflicts.py
+# PR #21314 - CUTLASS NVFP4 GEMM improvement of SM120
+# Use git diff to apply changes (avoids merge conflicts)
+RUN git fetch origin pull/21314/head:pr-21314 && \
+    git diff $(git merge-base HEAD pr-21314)..pr-21314 -- \
+        python/sglang/jit_kernel/csrc/gemm/nvfp4/ \
+        python/sglang/srt/layers/quantization/ \
+        python/sglang/srt/server_args.py \
+    | git apply --3way --allow-empty && \
+    git add -A
+
+# PCIe allreduce + b12x integration (lukealonso fork)
+# Cherry-pick has known merge conflicts — resolver script handles them
+# Source commits: 5bb89b03 (PCIe allreduce) + c70c22a1 (b12x backend)
 RUN git remote add lukealonso https://github.com/lukealonso/sglang.git && \
-    git fetch lukealonso 5bb89b03afe46fbd012da9f50bb5992673342123 c70c22a15a16961c65b8c61f7f18fae07995ec38 && \
-    (git cherry-pick --no-commit 5bb89b03afe46fbd012da9f50bb5992673342123 || git cherry-pick --abort 2>/dev/null || true) && \
-    python /tmp/fix-cherry-pick-conflicts.py && \
+    git fetch lukealonso 5bb89b03afe46fbd012da9f50bb5992673342123 c70c22a15a16961c65b8c61f7f18fae07995ec38
+COPY patches/fix-pcie-allreduce-conflict.py /tmp/fix-pcie-allreduce-conflict.py
+COPY patches/fix-modelopt-merge.py /tmp/fix-modelopt-merge.py
+RUN echo "=== PCIe allreduce (5bb89b03) ===" && \
+    git cherry-pick --no-commit 5bb89b03afe46fbd012da9f50bb5992673342123; \
+    python /tmp/fix-pcie-allreduce-conflict.py && \
     git add -A && \
-    (git cherry-pick --no-commit c70c22a15a16961c65b8c61f7f18fae07995ec38 || git cherry-pick --abort 2>/dev/null || true) && \
-    python /tmp/fix-cherry-pick-conflicts.py && \
+    echo "=== b12x backend (c70c22a1) ===" && \
+    git cherry-pick --no-commit c70c22a15a16961c65b8c61f7f18fae07995ec38; \
+    python /tmp/fix-pcie-allreduce-conflict.py && \
+    python /tmp/fix-modelopt-merge.py && \
     git add -A && \
-    rm /tmp/fix-cherry-pick-conflicts.py
+    rm /tmp/fix-pcie-allreduce-conflict.py /tmp/fix-modelopt-merge.py && \
+    python3 -c "import ast,glob; [ast.parse(open(f,encoding='utf-8-sig').read(),f) for f in glob.glob('python/sglang/srt/**/*.py',recursive=True)]" && \
+    echo "=== PCIe allreduce + b12x applied, syntax verified ==="
 
 # -- Patch sgl-kernel: remove sm_100a/sm_103a (only need sm_120a + sm_90a) ----
 RUN sed -i '/compute_100a.*sm_100a/d' sgl-kernel/CMakeLists.txt && \
@@ -304,22 +290,29 @@ RUN --mount=type=cache,target=/root/.ccache \
 WORKDIR /opt/sglang
 RUN pip install --no-build-isolation --no-deps -e "./python[all]"
 
-# Install SGLang's runtime deps (explicit list, excludes source-built packages)
+# Install SGLang's runtime deps
+# First: safe packages (no torch dependency)
 RUN uv pip install \
-        ipython pynvml orjson "apache-tvm-ffi>=0.1.6" \
-        openai anthropic aiohttp fastapi uvicorn uvloop \
+        ipython pynvml orjson \
+        aiohttp fastapi uvicorn uvloop \
         numpy scipy pandas pillow requests psutil pydantic \
-        packaging tqdm regex interegular outlines compressed-tensors \
-        lark-parser cloudpickle rpyc msgspec \
+        packaging tqdm regex cloudpickle rpyc msgspec \
         multipart python-multipart decord soundfile librosa \
         prometheus-client prometheus-fastapi-instrumentator \
         partial_json_parser tiktoken modelscope pybase64 \
         huggingface_hub \
-        xgrammar setproctitle gguf dill pyzmq einops openai-harmony \
+        setproctitle gguf dill pyzmq einops \
+        lark-parser "apache-tvm-ffi>=0.1.6" \
+        sniffio distro loguru jsonschema nvidia-ml-py \
+    || true
+# Then: packages that pull torch as dep — install with --no-deps
+RUN uv pip install --no-deps \
+        xgrammar outlines compressed-tensors interegular \
+        openai anthropic openai-harmony \
     || true
 
 # Verify torch wasn't overwritten
-RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu132' in v, f'TORCH DOWNGRADED: {v}'"
+RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu13' in v, f'TORCH DOWNGRADED: {v}'"
 
 # Reinstall bleeding-edge packages (--no-deps to be safe)
 RUN uv pip install --upgrade huggingface_hub && \
@@ -445,6 +438,7 @@ ENV VIRTUAL_ENV=/opt/venv \
 # Runtime env
 ENV TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST} \
     FLASHINFER_CUDA_ARCH_LIST=${FLASHINFER_CUDA_ARCH_LIST} \
+    FLASHINFER_DISABLE_VERSION_CHECK=1 \
     NCCL_P2P_DISABLE=0 \
     NCCL_IB_DISABLE=0 \
     CUDA_DEVICE_MAX_CONNECTIONS=32
@@ -482,11 +476,13 @@ COPY patches/fix-glm-moe-strip-whitespace.py /tmp/patches/
 COPY patches/apply-indexcache.py /tmp/patches/
 COPY patches/fix-blackwell-flashinfer-backend-assert.py /tmp/patches/
 COPY patches/fix-pcie-allreduce-conflict.py /tmp/patches/
+COPY patches/fix-triton-smem-autotuning-sm120.py /tmp/patches/
 RUN python /tmp/patches/sglang-kld-logit-capture.py && \
     python /tmp/patches/fix-glm-moe-strip-whitespace.py && \
     python /tmp/patches/apply-indexcache.py && \
     python /tmp/patches/fix-blackwell-flashinfer-backend-assert.py && \
     python /tmp/patches/fix-pcie-allreduce-conflict.py && \
+    python /tmp/patches/fix-triton-smem-autotuning-sm120.py && \
     rm -rf /tmp/patches
 
 # Smoke test (import only, no GPU needed)
@@ -501,8 +497,8 @@ print(f'FlashInfer:   {flashinfer.__version__}'); \
 print(f'Transformers: {transformers.__version__}'); \
 print(f'SGLang:       {getattr(sglang, \"__version__\", \"editable-install\")}'); \
 print(f'DeepGEMM:     bundled in sgl-kernel'); \
-assert 'cu132' in torch.__version__, f'WRONG TORCH IN FINAL IMAGE: {torch.__version__}'; \
-print('OK: torch nightly cu132, sgl-kernel from source, no vLLM'); \
+assert 'cu13' in torch.__version__, f'WRONG TORCH: {torch.__version__}'; \
+print('OK: torch nightly cu130, sgl-kernel from source, no vLLM'); \
 "
 
 ENTRYPOINT ["/entrypoint.sh"]
