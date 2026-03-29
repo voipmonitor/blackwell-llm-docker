@@ -131,11 +131,24 @@ else:
     print(f"OK: no conflict in {attn_reg_file.name}")
 
 
-# --- Catch-all: scan for any remaining conflict markers ---
+# --- 6. disaggregation/decode.py: keep both imports ---
 
+decode_file = SGLANG_ROOT / "disaggregation/decode.py"
+if resolve_conflict(decode_file, strategy="both"):
+    print(f"OK: resolved conflict in {decode_file.name} (kept both imports)")
+else:
+    print(f"OK: no conflict in {decode_file.name}")
+
+
+# --- Catch-all: FAIL on any remaining conflict markers ---
+
+has_unresolved = False
 for py_file in SGLANG_ROOT.rglob("*.py"):
     try:
         if "<<<<<<< HEAD" in py_file.read_text():
-            print(f"WARNING: unresolved conflict in {py_file}")
+            print(f"ERROR: unresolved conflict in {py_file}")
+            has_unresolved = True
     except Exception:
         pass
+if has_unresolved:
+    exit(1)
