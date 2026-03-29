@@ -122,20 +122,18 @@ WORKDIR /build
 RUN git clone --depth 1 https://github.com/NVIDIA/cutlass.git /build/cutlass && \
     grep "CUTLASS_MAJOR\|CUTLASS_MINOR\|CUTLASS_PATCH" /build/cutlass/include/cutlass/version.h | head -3
 
-# -- Install PyTorch 2.12 nightly (cu132) --------------------------------------
-# Step 1: Install torch stable from cu130 index (gets all nvidia deps as prebuilt wheels)
-# Step 2: Upgrade just the torch wheel to 2.12 nightly cu132 (--no-deps)
-# Step 3: Reinstall nvidia-nccl-cu13 (system CUDA 13.2 provides the rest)
+# -- Install PyTorch 2.11 stable (cu130) ---------------------------------------
+# torch 2.12 nightly cu132 causes crashes under concurrent load.
+# torch 2.11 stable from cu130 index works on CUDA 13.2 base without issues.
 RUN pip install torch torchvision \
     --index-url https://download.pytorch.org/whl/cu130 \
     --force-reinstall
-RUN pip install torch \
-    --index-url https://download.pytorch.org/whl/nightly/cu132 \
-    --no-deps --force-reinstall
+
+# -- Install latest NCCL for CUDA 13 -----------------------------------------
 RUN pip install --force-reinstall nvidia-nccl-cu13
 
-# Verify torch imports and is 2.12
-RUN python -c "import torch; v=torch.__version__; print(f'PyTorch: {v}'); assert '2.12' in v or '2.13' in v, f'WRONG TORCH: {v}'"
+# Verify torch
+RUN python -c "import torch; v=torch.__version__; print(f'PyTorch: {v}')"
 
 # -- Install Triton 3.5.1 (3.6.0 has SM120 regression: illegal memory access during CUDA graph capture)
 RUN uv pip install triton==3.6.0 --force-reinstall
@@ -157,8 +155,8 @@ RUN uv pip install --no-deps --upgrade \
     sentencepiece \
     bitsandbytes
 
-# xformers (nightly, matching torch 2.12 cu132)
-RUN uv pip install xformers --index-url https://download.pytorch.org/whl/nightly/cu132 --no-deps || true
+# xformers (nightly)
+RUN uv pip install xformers --index-url https://download.pytorch.org/whl/nightly/cu130 --no-deps || true
 
 # fastsafetensors
 RUN uv pip install fastsafetensors
@@ -398,7 +396,7 @@ WORKDIR /opt/sglang
 RUN pip install --no-build-isolation --no-deps -e "./python[all]"
 
 # Final torch version verification
-RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert '2.12' in v or '2.13' in v, f'WRONG TORCH: {v}'"
+RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu13' in v, f'WRONG TORCH: {v}'"
 RUN python -c "import sglang; print(f'SGLang {sglang.__version__}')"
 
 # Clean up pip/uv caches before copying to final stage
