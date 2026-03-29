@@ -223,6 +223,7 @@ RUN git config user.email "build@docker" && git config user.name "build" && \
         pull/20479/head:pr-20479 \
         pull/20534/head:pr-20534 \
         pull/20949/head:pr-20949 \
+        pull/21599/head:pr-21599 \
         pull/21601/head:pr-21601 && \
     echo "=== PR #19963: Fix arch suffix (adapted for refactored code) ===" && \
     python3 /tmp/patches/fix-cuda-arch-suffix.py && \
@@ -244,6 +245,8 @@ RUN git config user.email "build@docker" && git config user.name "build" && \
     git cherry-pick --no-commit 4578257732bf f695b901400833 && \
     echo "=== PR #20949: cuBLAS/cuBLASLt warmup for BF16 ===" && \
     git cherry-pick --no-commit f6c25c12c && \
+    echo "=== PR #21599: Adaptive speculative decoding for EAGLE topk=1 ===" && \
+    git cherry-pick --no-commit 06488d367 5f9b9554a 0fc903cc5 6e8f2abe4 e486262df 3200fa2f9 3bd9c1e15 && \
     echo "=== PR #20445: Avoid GPU syncs in mamba/GDN track metadata ===" && \
     git cherry-pick --no-commit cc4a43a1698bd61acbe03af6656f366d963476ce && \
     echo "=== PR #20433: Async extra buffer track indices (+15% MTP throughput) ===" && \
