@@ -377,16 +377,14 @@ RUN SGLANG_PKG="/opt/sglang/python" && \
     rm -rf /tmp/triton-configs && \
     ls -la "$TRITON_CONFIGS_DIR/"
 
-# -- Upgrade FlashInfer CUTLASS headers to latest (git main) -------------------
-RUN FLASHINFER_CUTLASS="$(python -c "import flashinfer, os; \
-    base = os.path.dirname(flashinfer.__file__); \
-    candidates = [os.path.join(base, s) for s in ['data/cutlass', 'cutlass']]; \
-    print(next(p for p in candidates if os.path.isdir(p)))")" && \
-    echo "CUTLASS dir: ${FLASHINFER_CUTLASS}" && \
-    rm -rf "${FLASHINFER_CUTLASS}/include" "${FLASHINFER_CUTLASS}/tools" && \
-    cp -a /build/cutlass/include "${FLASHINFER_CUTLASS}/include" && \
-    cp -a /build/cutlass/tools "${FLASHINFER_CUTLASS}/tools" && \
-    grep "CUTLASS_MAJOR\|CUTLASS_MINOR\|CUTLASS_PATCH" "${FLASHINFER_CUTLASS}/include/cutlass/version.h" | head -3
+# -- REMOVED: FlashInfer CUTLASS header overwrite ------------------------------
+# Previously we copied git-main CUTLASS headers into FlashInfer's bundled copy.
+# This caused version mismatches between headers and compiled kernels, leading
+# to crashes during MTP speculative decoding. FlashInfer nightly ships with
+# matching CUTLASS headers — do not overwrite them.
+
+# -- CCCL symlink (CUDA 13.2 moved headers under cccl/ prefix) ----------------
+RUN ln -sf /usr/local/cuda/targets/x86_64-linux/include/cccl/cuda /usr/local/cuda/include/cuda
 
 # -- Upgrade cuDNN to latest ------------------------------------------------
 RUN uv pip install --upgrade nvidia-cudnn-cu13 && \
