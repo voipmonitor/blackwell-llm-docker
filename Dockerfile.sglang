@@ -143,8 +143,8 @@ RUN uv pip install triton==3.6.0 --force-reinstall
 RUN uv pip install "nvidia-cutlass-dsl[cu13]" && \
     pip install --force-reinstall --no-deps nvidia-cutlass-dsl-libs-cu13
 
-# -- Install transformers (stable from PyPI) ----------------------------------
-RUN uv pip install transformers
+# -- Install transformers (pinned — 5.4+ has incompatible composite config for Qwen3.5) ---
+RUN uv pip install "transformers>=5.3.0,<5.4"
 
 # -- Install other bleeding-edge packages ------------------------------------
 RUN uv pip install --no-deps --upgrade \
@@ -338,7 +338,7 @@ RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 
 
 # Reinstall bleeding-edge packages (--no-deps to be safe)
 RUN uv pip install --upgrade huggingface_hub && \
-    uv pip install --upgrade transformers && \
+    uv pip install --upgrade "transformers>=5.3.0,<5.4" && \
     uv pip install --force-reinstall "nvidia-cutlass-dsl[cu13]"
 
 # Fix nvidia-cutlass-dsl: libs-base ships _cutlass_ir.so with NVVM/ptxas 12.9
