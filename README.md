@@ -8,7 +8,7 @@ Docker images for LLM inference on NVIDIA Blackwell GPUs (SM120). Pre-built imag
 
 | Image | Dockerfile | Stack |
 |-------|-----------|-------|
-| `voipmonitor/sglang:test-cu132` | `Dockerfile.sglang` | CUDA 13.2 base, PyTorch 2.11 stable (cu130), FlashInfer nightly, Triton 3.6.0, SGLang from source |
+| `voipmonitor/sglang:test-cu132` | `Dockerfile.sglang` | CUDA 13.2 base, PyTorch stable (cu130), FlashInfer nightly, Triton 3.6.0, SGLang from source |
 
 Includes: CUTLASS 4.x DSL, sgl-kernel (SM120+SM90), PCIe allreduce, b12x NVFP4 backend, pre-tuned Triton MoE configs for RTX PRO 6000 Blackwell, JIT cache management.
 
