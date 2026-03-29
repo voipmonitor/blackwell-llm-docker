@@ -4,12 +4,20 @@ Inserts a hook in LogitsProcessor.forward that saves full log-softmax
 logits to disk when SGLANG_KLD_SAVE_DIR is set. Only rank 0 saves to
 avoid duplicate writes from tensor-parallel workers.
 
+Skips MTP/NextN speculative-head forward passes by inspecting the call
+stack for MTP model files (e.g. qwen3_5_mtp.py, deepseek_nextn.py).
+Also skips DRAFT_EXTEND forward mode (post-decode MTP).
+
 Usage:
     python patches/sglang-kld-logit-capture.py   # apply patch
     SGLANG_KLD_SAVE_DIR=/tmp/kld_ref python -m sglang.launch_server ...
 
 Each prefill request saves one safetensors file with key "log_probs"
-of shape [N, vocab_size] in float16.
+of shape [N, vocab_size] in float32.
+
+Env vars:
+    SGLANG_KLD_SAVE_DIR   — directory for logit files (required to enable)
+    SGLANG_KLD_VOCAB_SIZE — trim TP padding to this vocab size (default: 152064)
 """
 from pathlib import Path
 
@@ -41,12 +49,28 @@ import threading as _kld_threading
 _kld_lock = _kld_threading.Lock()
 _kld_counter = 0
 
-def _kld_maybe_save(input_logits):
-    """Save full log-softmax logits to disk for KLD evaluation."""
+def _kld_maybe_save(input_logits, logits_metadata):
+    """Save full log-softmax logits to disk for KLD evaluation.
+
+    Skips MTP/NextN speculative-head calls (detected via call stack)
+    and DRAFT_EXTEND forward mode to avoid contaminating KLD with
+    speculative-head logits.
+    """
     global _kld_counter
     save_dir = _kld_os.environ.get("SGLANG_KLD_SAVE_DIR")
     if not save_dir:
         return
+    # Skip MTP draft-extend forward passes (post-decode speculative)
+    if hasattr(logits_metadata, "forward_mode") and hasattr(logits_metadata.forward_mode, "is_draft_extend"):
+        if logits_metadata.forward_mode.is_draft_extend(include_v2=True):
+            return
+    # Skip MTP/NextN model calls during prefill by checking call stack.
+    # MTP heads have their own LogitsProcessor but are called from
+    # model files like qwen3_5_mtp.py or deepseek_nextn.py.
+    import traceback as _tb
+    for _frame in _tb.extract_stack():
+        if "mtp" in _frame.filename.lower() or "nextn" in _frame.filename.lower():
+            return
     # Only save from rank 0 to avoid duplicates across TP workers
     try:
         import torch.distributed
@@ -61,14 +85,14 @@ def _kld_maybe_save(input_logits):
     import torch
     import torch.nn.functional as F
     vocab_size = int(_kld_os.environ.get("SGLANG_KLD_VOCAB_SIZE", "152064"))
-    logits = input_logits[:, :vocab_size].float()
-    log_probs = F.log_softmax(logits, dim=-1).half()
+    logits = input_logits[:, :vocab_size].cpu().float()
+    log_probs = F.log_softmax(logits, dim=-1)
     from safetensors.torch import save_file
     with _kld_lock:
         idx = _kld_counter
         _kld_counter += 1
     path = _kld_os.path.join(save_dir, f"{idx}.safetensors")
-    save_file({"log_probs": log_probs.cpu()}, path)
+    save_file({"log_probs": log_probs}, path)
     print(f"[KLD] Saved logits {log_probs.shape} to {path}")
 # --- End KLD logit capture patch ---
 '''
@@ -82,7 +106,7 @@ anchor_line_end = c.index('\n', m.end()) + 1
 c = c[:anchor_line_end] + helper + c[anchor_line_end:]
 
 # --- Patch the non-chunked path in forward() ---
-# Insert _kld_maybe_save(input_logits) between the indexing and del
+# Insert _kld_maybe_save(input_logits, logits_metadata) between the indexing and del
 
 old_nonchunked = '''\
             input_logits = logits[input_logprob_indices]
@@ -93,7 +117,7 @@ old_nonchunked = '''\
 new_nonchunked = '''\
             input_logits = logits[input_logprob_indices]
             del logits
-            _kld_maybe_save(input_logits)
+            _kld_maybe_save(input_logits, logits_metadata)
 
             logprobs_result = self.process_input_logprobs(input_logits, logits_metadata)'''
 

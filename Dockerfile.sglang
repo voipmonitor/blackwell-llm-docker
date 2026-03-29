@@ -477,12 +477,14 @@ COPY patches/apply-indexcache.py /tmp/patches/
 COPY patches/fix-blackwell-flashinfer-backend-assert.py /tmp/patches/
 COPY patches/fix-pcie-allreduce-conflict.py /tmp/patches/
 COPY patches/fix-triton-smem-autotuning-sm120.py /tmp/patches/
+COPY patches/fix-nvfp4-dual-gencode.py /tmp/patches/
 RUN python /tmp/patches/sglang-kld-logit-capture.py && \
     python /tmp/patches/fix-glm-moe-strip-whitespace.py && \
     python /tmp/patches/apply-indexcache.py && \
     python /tmp/patches/fix-blackwell-flashinfer-backend-assert.py && \
     python /tmp/patches/fix-pcie-allreduce-conflict.py && \
     python /tmp/patches/fix-triton-smem-autotuning-sm120.py && \
+    python /tmp/patches/fix-nvfp4-dual-gencode.py && \
     rm -rf /tmp/patches
 
 # Smoke test (import only, no GPU needed)
