@@ -121,11 +121,10 @@ WORKDIR /build
 RUN git clone --depth 1 https://github.com/NVIDIA/cutlass.git /build/cutlass && \
     grep "CUTLASS_MAJOR\|CUTLASS_MINOR\|CUTLASS_PATCH" /build/cutlass/include/cutlass/version.h | head -3
 
-# -- Install PyTorch 2.11 stable (cu130 — works on CUDA 13.2 base) ------------
-# torch 2.11 avoids CUDA graph padding IMA bug present in torch 2.12
+# -- Install PyTorch 2.12 nightly (cu132) --------------------------------------
 RUN uv pip install \
     torch torchvision \
-    --index-url https://download.pytorch.org/whl/cu130 \
+    --index-url https://download.pytorch.org/whl/nightly/cu132 \
     --force-reinstall
 
 # -- Install latest NCCL for CUDA 13 -----------------------------------------
@@ -154,8 +153,8 @@ RUN uv pip install --no-deps --upgrade \
     sentencepiece \
     bitsandbytes
 
-# xformers (nightly, matching torch 2.12)
-RUN uv pip install xformers --index-url https://download.pytorch.org/whl/nightly/cu130 --no-deps || true
+# xformers (nightly, matching torch 2.12 cu132)
+RUN uv pip install xformers --index-url https://download.pytorch.org/whl/nightly/cu132 --no-deps || true
 
 # fastsafetensors
 RUN uv pip install fastsafetensors
