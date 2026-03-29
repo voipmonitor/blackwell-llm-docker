@@ -295,22 +295,7 @@ RUN echo "=== PCIe allreduce (5bb89b03) ===" && \
     python3 -c "import ast,glob; [ast.parse(open(f,encoding='utf-8-sig').read(),f) for f in glob.glob('python/sglang/srt/**/*.py',recursive=True)]" && \
     echo "=== PCIe allreduce + b12x applied, syntax verified ==="
 
-# Build sgl-kernel for Blackwell (sm_120a) + Hopper FA3 (sm_90a)
-# ENABLE_BELOW_SM90=0 skips sm_100a/sm_103a gencodes automatically
-WORKDIR /opt/sglang/sgl-kernel
-RUN uv pip install scikit-build-core
-RUN --mount=type=cache,target=/root/.ccache \
-    TORCH_CUDA_ARCH_LIST="12.0a" \
-    CMAKE_CUDA_ARCHITECTURES="120a" \
-    MAX_JOBS=${MAX_JOBS} \
-    make build CMAKE_ARGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DENABLE_BELOW_SM90=0"
-
-# Install SGLang Python package (editable so source tree is live)
-# --no-deps: prevents pip from pulling stable torch, sgl-kernel, flashinfer from PyPI
-WORKDIR /opt/sglang
-RUN pip install --no-build-isolation --no-deps -e "./python[all]"
-
-# Install SGLang's runtime deps
+# Install SGLang's runtime deps (BEFORE sgl-kernel build so deps don't downgrade torch)
 # First: safe packages (no torch dependency)
 RUN uv pip install \
         ipython pynvml orjson \
@@ -330,9 +315,6 @@ RUN uv pip install --no-deps \
         xgrammar outlines compressed-tensors interegular \
         openai anthropic openai-harmony \
     || true
-
-# Verify torch wasn't overwritten
-RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu13' in v, f'TORCH DOWNGRADED: {v}'"
 
 # Reinstall bleeding-edge packages (--no-deps to be safe)
 RUN uv pip install --upgrade huggingface_hub && \
@@ -354,8 +336,6 @@ RUN CUTLASS_DSL=$(python -c 'import cutlass.utils.blockscaled_layout as m; print
 # b12x: TP-only NVFP4 MoE/GEMM backend (no-deps to avoid torch conflicts)
 RUN uv pip install b12x --no-deps
 
-# Verify SGLang
-RUN python -c "import sglang; print(f'SGLang {sglang.__version__}')"
 
 # Copy Triton MoE configs for Blackwell GPUs
 COPY configs/ /tmp/triton-configs/
@@ -401,6 +381,25 @@ RUN pip uninstall -y \
     echo "Verifying no CUDA 12 runtime:" && \
     ! find /opt/venv -name 'libcudart.so.12*' 2>/dev/null | grep -q . && \
     echo "OK: no libcudart.so.12 found"
+
+# -- Build sgl-kernel LAST (after all pip deps are finalized) ------------------
+# This ensures sgl-kernel links against the final torch 2.12 cu132, not a
+# downgraded version from transitive pip deps.
+WORKDIR /opt/sglang/sgl-kernel
+RUN uv pip install scikit-build-core
+RUN --mount=type=cache,target=/root/.ccache \
+    TORCH_CUDA_ARCH_LIST="12.0a" \
+    CMAKE_CUDA_ARCHITECTURES="120a" \
+    MAX_JOBS=${MAX_JOBS} \
+    make build CMAKE_ARGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DENABLE_BELOW_SM90=0"
+
+# Install SGLang Python package (editable so source tree is live)
+WORKDIR /opt/sglang
+RUN pip install --no-build-isolation --no-deps -e "./python[all]"
+
+# Final torch version verification
+RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert '2.12' in v or '2.13' in v, f'WRONG TORCH: {v}'"
+RUN python -c "import sglang; print(f'SGLang {sglang.__version__}')"
 
 # Clean up pip/uv caches before copying to final stage
 RUN pip cache purge 2>/dev/null || true && \
