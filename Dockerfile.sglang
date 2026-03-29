@@ -35,6 +35,7 @@ ARG PYTHON_VERSION=3.12
 ARG MAX_JOBS=128
 ARG NVCC_THREADS=8
 ARG TORCH_CUDA_ARCH_LIST="12.0a"
+ARG CMAKE_CUDA_ARCHITECTURES="120a"
 ARG FLASHINFER_CUDA_ARCH_LIST="12.0a"
 
 # =============================================================================
@@ -294,18 +295,13 @@ RUN echo "=== PCIe allreduce (5bb89b03) ===" && \
     python3 -c "import ast,glob; [ast.parse(open(f,encoding='utf-8-sig').read(),f) for f in glob.glob('python/sglang/srt/**/*.py',recursive=True)]" && \
     echo "=== PCIe allreduce + b12x applied, syntax verified ==="
 
-# -- Patch sgl-kernel: remove sm_100a/sm_103a (only need sm_120a + sm_90a) ----
-RUN sed -i '/compute_100a.*sm_100a/d' sgl-kernel/CMakeLists.txt && \
-    sed -i '/compute_103a.*sm_103a/d' sgl-kernel/CMakeLists.txt && \
-    sed -i '/compute_100a/d' sgl-kernel/cmake/flashmla.cmake && \
-    sed -i '/compute_103a/d' sgl-kernel/cmake/flashmla.cmake && \
-    echo "OK: removed sm_100a/sm_103a gencode from sgl-kernel"
-
 # Build sgl-kernel for Blackwell (sm_120a) + Hopper FA3 (sm_90a)
+# ENABLE_BELOW_SM90=0 skips sm_100a/sm_103a gencodes automatically
 WORKDIR /opt/sglang/sgl-kernel
 RUN uv pip install scikit-build-core
 RUN --mount=type=cache,target=/root/.ccache \
     TORCH_CUDA_ARCH_LIST="12.0a" \
+    CMAKE_CUDA_ARCHITECTURES="120a" \
     MAX_JOBS=${MAX_JOBS} \
     make build CMAKE_ARGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DENABLE_BELOW_SM90=0"
 
