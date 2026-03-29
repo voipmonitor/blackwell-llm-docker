@@ -49,7 +49,6 @@ docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang -t voipmonit
   | flashinfer_cutlass | 0.036 |
   | cutedsl + cudnn | 0.036 |
   | cutlass MoE | 0.036 |
-  | b12x | ~0.51 |
 
 ### 2026-03-28
 - **PyTorch downgraded from 2.12 nightly to 2.11 stable (cu130)** — torch 2.12 has a CUDA graph memory management regression (`create_allocate_filter()`) that causes illegal memory access during MTP speculative decoding with CUDA graph padding. See [SGLang #21597](https://github.com/sgl-project/sglang/issues/21597). Torch 2.11 stable from `https://download.pytorch.org/whl/cu130` works on CUDA 13.2 base without issues.
