@@ -141,9 +141,12 @@ else:
 
 
 # --- Catch-all: FAIL on any remaining conflict markers ---
+# Skip modelopt_quant.py — handled separately by fix-modelopt-merge.py
 
 has_unresolved = False
 for py_file in SGLANG_ROOT.rglob("*.py"):
+    if py_file.name == "modelopt_quant.py":
+        continue  # resolved by fix-modelopt-merge.py
     try:
         if "<<<<<<< HEAD" in py_file.read_text():
             print(f"ERROR: unresolved conflict in {py_file}")
