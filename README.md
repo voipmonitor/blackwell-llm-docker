@@ -35,29 +35,37 @@ docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang -t voipmonit
 
 ## Changelog
 
-### 2026-03-29
-- **KLD logit capture patch rewritten** — fixed two bugs that contaminated KLD measurements:
-  1. **MTP head contamination**: LogitsProcessor.forward() was called by both the main model head and MTP speculative heads during prefill, doubling the captured files (200 instead of 100). MTP head logits (higher entropy, different distribution) inflated mean KLD by ~18%. Fixed by inspecting the call stack for MTP model files (`*mtp*.py`, `*nextn*.py`) and skipping those calls.
-  2. **float16 precision loss**: log-probabilities were stored as float16. Changed to float32 (computed on CPU to avoid GPU OOM). Matches vLLM PR #35961 methodology.
-  3. **DRAFT_EXTEND filter**: also skips post-decode MTP forward passes (forward_mode=DRAFT_EXTEND).
-- **Added `fix-nvfp4-dual-gencode.py` patch** — on CUDA 13+, `_get_nvfp4_cuda_arch_list()` appends `"10.3a"` to the JIT arch list. With `SGL_CUDA_ARCH=1200` (SM120), nvcc compiles both SM120 and SM103 variants; the SM103 variant triggers a static assertion (`__CUDA_ARCH__=1030 != SGL_CUDA_ARCH=1200`). Fix: remove the 10.3a append — JIT should only compile for the actual device.
-- **Corrected KLD results** (Qwen3.5-397B-A17B NVFP4 vs FP8 reference, main head only):
+### 2026-03-29 (v2)
+- **New cherry-picks:**
+  - [PR #20182](https://github.com/sgl-project/sglang/pull/20182) — fix mamba/GDN memory leak on request abort under concurrency (crash: `token_to_kv_pool_allocator memory leak detected!`)
+  - [PR #20433](https://github.com/sgl-project/sglang/pull/20433) — async extra_buffer SSM state tracking for NEXTN spec-v2 (~15% MTP throughput improvement)
+  - [PR #20445](https://github.com/sgl-project/sglang/pull/20445) — remove GPU sync points in mamba/GDN track metadata (perf)
+  - [PR #21599](https://github.com/sgl-project/sglang/pull/21599) — adaptive speculative decoding for EAGLE topk=1 (dynamically adjusts `speculative_num_steps` based on acceptance rate, enable with `--speculative-adaptive`)
+  - [PR #21601](https://github.com/sgl-project/sglang/pull/21601) — FP4 KV cache support for SM120 GPUs (`--kv-cache-dtype nvfp4`)
+- **Conflict resolution scripts** for PRs with merge conflicts (no `|| true`):
+  - `fix-mamba-leak-conflict.py` — resolves #20182 conflict (hisparse_coordinator in refactored helper)
+  - `fix-fp4-kvcache-conflict.py` — resolves #21601 conflicts (flashinfer piecewise CUDA graph + trtllm skip_softmax params)
 
-  | Backend | Mean KLD |
-  |---------|----------|
+### 2026-03-29
+- **KLD logit capture patch rewritten:**
+  - Fixed MTP head contamination (doubled files, inflated KLD by ~18%)
+  - Changed log-prob storage from float16 to float32 (matches vLLM PR #35961)
+  - Auto-filters MTP/NextN speculative heads via call stack inspection
+- **Added `fix-nvfp4-dual-gencode.py` patch** — removes 10.3a from nvfp4 JIT arch list to prevent SGL_CUDA_ARCH mismatch on SM120
+- **Corrected KLD results** (Qwen3.5-397B-A17B vs FP8 reference):
+
+  | Model | Mean KLD |
+  |-------|----------|
   | AWQ (QuantTrio) | 0.024 |
-  | flashinfer_cutlass | 0.036 |
-  | cutedsl + cudnn | 0.036 |
-  | cutlass MoE | 0.036 |
+  | nvidia/NVFP4 | 0.035 |
+  | lukealonso/NVFP4 | 0.036 |
 
 ### 2026-03-28
-- **FlashInfer switched from source build to nightly pip** — `pip install --pre flashinfer-python` from `https://flashinfer.ai/whl/nightly/` with pre-compiled cubins and JIT cache for cu130.
+- **FlashInfer switched from source build to nightly pip**
 - **Triton updated from 3.5.1 to 3.6.0**
-- **Cherry-picks cleaned up** — removed `|| true` from all cherry-picks (build fails loudly on conflicts), removed merged PRs (#20232, #20441), removed PRs with merge conflicts that are not needed for GLM-5 (#20074 Qwen3.5 DeltaNet, #20182/#20377/#20433/#20445 Mamba fixes).
-- **PR #19963 adapted** — original cherry-pick conflicts with refactored `ArchInfo` code in main. Replaced with `fix-cuda-arch-suffix.py` patch that applies the same fix (append `"a"` suffix for CC >= 9.0) to the new code structure.
-- **Added syntax verification** — all `.py` files are parsed with `ast.parse()` after cherry-picks to catch merge conflict artifacts.
-- **Added `FLASHINFER_DISABLE_VERSION_CHECK=1`** to runtime env.
-- **Removed vLLM image** — no longer maintained.
+- **Cherry-picks cleaned up** — removed merged PRs, added syntax verification
+- **PR #19963 adapted** for refactored ArchInfo code
+- **Removed vLLM image**
 
 ### 2026-03-26
-- Initial CUDA 13.2 + PyTorch 2.12 nightly build
+- Initial CUDA 13.2 build
