@@ -51,7 +51,6 @@ docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang -t voipmonit
   | cutlass MoE | 0.036 |
 
 ### 2026-03-28
-- **PyTorch downgraded from 2.12 nightly to 2.11 stable (cu130)** — torch 2.12 has a CUDA graph memory management regression (`create_allocate_filter()`) that causes illegal memory access during MTP speculative decoding with CUDA graph padding. See [SGLang #21597](https://github.com/sgl-project/sglang/issues/21597). Torch 2.11 stable from `https://download.pytorch.org/whl/cu130` works on CUDA 13.2 base without issues.
 - **FlashInfer switched from source build to nightly pip** — `pip install --pre flashinfer-python` from `https://flashinfer.ai/whl/nightly/` with pre-compiled cubins and JIT cache for cu130.
 - **Triton updated from 3.5.1 to 3.6.0**
 - **Cherry-picks cleaned up** — removed `|| true` from all cherry-picks (build fails loudly on conflicts), removed merged PRs (#20232, #20441), removed PRs with merge conflicts that are not needed for GLM-5 (#20074 Qwen3.5 DeltaNet, #20182/#20377/#20433/#20445 Mamba fixes).
