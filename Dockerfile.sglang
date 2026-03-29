@@ -207,17 +207,23 @@ RUN git clone --recursive https://github.com/sgl-project/sglang.git /opt/sglang
 # CLOSED (removed): #19897, #20110
 WORKDIR /opt/sglang
 COPY patches/fix-cuda-arch-suffix.py /tmp/patches/fix-cuda-arch-suffix.py
+COPY patches/fix-mamba-leak-conflict.py /tmp/patches/fix-mamba-leak-conflict.py
+COPY patches/fix-fp4-kvcache-conflict.py /tmp/patches/fix-fp4-kvcache-conflict.py
 RUN git config user.email "build@docker" && git config user.name "build" && \
     git fetch origin \
         pull/20059/head:pr-20059 \
         pull/20114/head:pr-20114 \
+        pull/20182/head:pr-20182 \
         pull/20275/head:pr-20275 \
+        pull/20433/head:pr-20433 \
         pull/20439/head:pr-20439 \
+        pull/20445/head:pr-20445 \
         pull/20448/head:pr-20448 \
         pull/20460/head:pr-20460 \
         pull/20479/head:pr-20479 \
         pull/20534/head:pr-20534 \
-        pull/20949/head:pr-20949 && \
+        pull/20949/head:pr-20949 \
+        pull/21601/head:pr-21601 && \
     echo "=== PR #19963: Fix arch suffix (adapted for refactored code) ===" && \
     python3 /tmp/patches/fix-cuda-arch-suffix.py && \
     echo "=== PR #20439: Fix AWQ modules_to_not_convert for FusedMoE ===" && \
@@ -238,6 +244,19 @@ RUN git config user.email "build@docker" && git config user.name "build" && \
     git cherry-pick --no-commit 4578257732bf f695b901400833 && \
     echo "=== PR #20949: cuBLAS/cuBLASLt warmup for BF16 ===" && \
     git cherry-pick --no-commit f6c25c12c && \
+    echo "=== PR #20445: Avoid GPU syncs in mamba/GDN track metadata ===" && \
+    git cherry-pick --no-commit cc4a43a1698bd61acbe03af6656f366d963476ce && \
+    echo "=== PR #20433: Async extra buffer track indices (+15% MTP throughput) ===" && \
+    git cherry-pick --no-commit 0433bc88b5ae59b397113fa297b3948fc0910a8a dc0a80235e9175cc4fdb16de900c97134ab408f7 && \
+    echo "=== PR #20182: Fix mamba memory leak (conflict: hisparse_coordinator) ===" && \
+    git cherry-pick --no-commit a38e09ac8ace2676de23d6b646bd15312a3afa6e; \
+    python3 /tmp/patches/fix-mamba-leak-conflict.py && \
+    git add -A && \
+    git cherry-pick --no-commit 6be4ccd441fb588f53cbc474f774c34dde9b571a 27d36e52e1eed766b41b00576e2f081e2fc5e87a && \
+    echo "=== PR #21601: FP4 KV cache SM120 (conflict: flashinfer+trtllm backends) ===" && \
+    git cherry-pick --no-commit 4473ed79fa3054c7fa40ae74717c2cd21d530a15; \
+    python3 /tmp/patches/fix-fp4-kvcache-conflict.py && \
+    git add -A && \
     echo "=== All cherry-picks applied ==="
 
 # PR #21314 - CUTLASS NVFP4 GEMM improvement of SM120
