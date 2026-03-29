@@ -8,7 +8,7 @@ Docker images for LLM inference on NVIDIA Blackwell GPUs (SM120). Pre-built imag
 
 | Image | Dockerfile | Stack |
 |-------|-----------|-------|
-| `voipmonitor/sglang:test-cu132` | `Dockerfile.sglang` | CUDA 13.2 base, PyTorch stable (cu130), FlashInfer nightly, Triton 3.6.0, SGLang from source |
+| `voipmonitor/sglang:test-cu132` | `Dockerfile.sglang` | CUDA 13.2 base, PyTorch 2.12 nightly (cu132), FlashInfer nightly, Triton 3.6.0, SGLang from source |
 
 Includes: CUTLASS 4.x DSL, sgl-kernel (SM120+SM90), PCIe allreduce, b12x NVFP4 backend, pre-tuned Triton MoE configs for RTX PRO 6000 Blackwell, JIT cache management.
 
@@ -34,6 +34,14 @@ docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang -t voipmonit
 - 96 GB VRAM per GPU
 
 ## Changelog
+
+### 2026-03-29 (v3)
+- **PyTorch upgraded to 2.12 nightly cu132** — was incorrectly on 2.11 stable cu130 since 2026-03-28 (torch was wrongly blamed for crashes caused by CUTLASS header mismatch)
+- **CUTLASS header overwrite removed** — previous builds copied git-main CUTLASS headers into FlashInfer's bundled copy, causing version mismatch between headers and compiled kernels. This was the root cause of MTP speculative decoding crashes (illegal memory access). FlashInfer nightly ships with matching headers.
+- **CCCL symlink added** — CUDA 13.2 moved headers under `cccl/` prefix; without the symlink (`cccl/cuda` → `cuda`), some JIT-compiled kernels fail at runtime
+- **sgl-kernel build moved to end** — sgl-kernel links against torch at compile time. Building it last (after all pip deps are finalized) ensures it links against torch 2.12 cu132, not an intermediate version that may be downgraded by transitive pip dependencies
+- **transformers pinned to <5.4** — transformers 5.4+ uses composite config for Qwen3.5 (`vision_config` as dict instead of object), breaking model loading
+- **sm_100a/sm_103a gencode sed hack removed** — `ENABLE_BELOW_SM90=0` + `CMAKE_CUDA_ARCHITECTURES="120a"` handles this cleanly
 
 ### 2026-03-29 (v2)
 - **New cherry-picks:**
