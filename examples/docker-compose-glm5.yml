@@ -1,0 +1,67 @@
+# GLM-5 NVFP4 with MTP speculative decoding on 8x Blackwell GPUs
+#
+# Usage:
+#   docker compose -f examples/docker-compose-glm5.yml up -d
+#
+# Requirements:
+#   - 8x NVIDIA RTX PRO 6000 Blackwell (96GB each) or equivalent
+#   - CUDA driver 575+
+#   - HuggingFace model cache at ~/.cache/huggingface
+#
+# API endpoint: http://localhost:5000/v1 (OpenAI-compatible)
+
+services:
+  sglang-glm5:
+    image: voipmonitor/sglang:cu130
+    container_name: sglang-glm5
+    ipc: host
+    shm_size: "8g"
+    network_mode: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    environment:
+      - SGLANG_ENABLE_SPEC_V2=True
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - jit-cache:/cache/jit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 8
+              capabilities: [gpu]
+    entrypoint: >
+      python3 -m sglang.launch_server
+      --model festr2/GLM-5-NVFP4-MTP
+      --served-model-name glm-5
+      --reasoning-parser glm45
+      --tool-call-parser glm47
+      --tensor-parallel-size 8
+      --quantization modelopt_fp4
+      --kv-cache-dtype bf16
+      --trust-remote-code
+      --cuda-graph-max-bs 32
+      --max-running-requests 64
+      --mem-fraction-static 0.85
+      --speculative-algo NEXTN
+      --speculative-num-steps 5
+      --speculative-eagle-topk 1
+      --speculative-num-draft-tokens 6
+      --host 0.0.0.0 --port 5000
+      --disable-custom-all-reduce
+      --enable-flashinfer-allreduce-fusion
+      --enable-metrics
+      --attention-backend flashinfer
+      --fp4-gemm-backend b12x
+      --moe-runner-backend b12x
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+volumes:
+  jit-cache:

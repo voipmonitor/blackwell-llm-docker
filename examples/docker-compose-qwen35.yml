@@ -1,0 +1,77 @@
+# Qwen3.5-397B-A17B NVFP4 on 4x Blackwell GPUs
+#
+# Usage:
+#   docker compose -f examples/docker-compose-qwen35.yml up -d
+#
+# Requirements:
+#   - 4x NVIDIA RTX PRO 6000 Blackwell (96GB each) or equivalent
+#   - CUDA driver 575+
+#   - ~380GB VRAM total (4x 95GB used)
+#   - HuggingFace model cache at ~/.cache/huggingface
+#
+# First run downloads ~200GB model weights (lukealonso/Qwen3.5-397B-A17B-NVFP4)
+# and JIT-compiles FlashInfer kernels (~5 min). Subsequent starts use cache.
+#
+# API endpoint: http://localhost:5000/v1 (OpenAI-compatible)
+
+services:
+  sglang-qwen35:
+    image: voipmonitor/sglang:cu130
+    container_name: sglang-qwen35
+    ipc: host
+    shm_size: "8g"
+    network_mode: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    environment:
+      - NCCL_P2P_LEVEL=SYS
+      - SGLANG_ENABLE_SPEC_V2=True
+      # Uncomment to select specific GPUs:
+      # - NVIDIA_VISIBLE_DEVICES=4,5,6,7
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - jit-cache:/cache/jit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Use 'all' for first 4 GPUs, or specify IDs: ["0","1","2","3"]
+              count: 4
+              capabilities: [gpu]
+    entrypoint: >
+      python3 -m sglang.launch_server
+      --model lukealonso/Qwen3.5-397B-A17B-NVFP4
+      --served-model-name Qwen3.5
+      --reasoning-parser qwen3
+      --tool-call-parser qwen3_coder
+      --tensor-parallel-size 4
+      --quantization modelopt_fp4
+      --kv-cache-dtype fp8_e4m3
+      --trust-remote-code
+      --cuda-graph-max-bs 64
+      --max-running-requests 64
+      --chunked-prefill-size 16384
+      --speculative-algo NEXTN
+      --speculative-num-steps 5
+      --speculative-eagle-topk 1
+      --speculative-num-draft-tokens 6
+      --mamba-scheduler-strategy extra_buffer
+      --mem-fraction-static 0.93
+      --host 0.0.0.0 --port 5000
+      --disable-custom-all-reduce
+      --enable-metrics
+      --schedule-conservativeness 0.1
+      --attention-backend flashinfer
+      --fp4-gemm-backend b12x
+      --moe-runner-backend b12x
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+volumes:
+  jit-cache:

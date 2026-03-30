@@ -16,6 +16,18 @@ Base image for cu132 (torch + FlashInfer compiled from source):
 |-------|-----------|-------|
 | `voipmonitor/torch:cu132` | `Dockerfile.torch-cu132` | CUDA 13.2, torch 2.12 from source (no pip nvidia-*), FlashInfer from source |
 
+## Quick start
+
+```bash
+# Qwen3.5-397B NVFP4 on 4x Blackwell GPUs
+docker compose -f examples/docker-compose-qwen35.yml up -d
+
+# GLM-5 NVFP4 on 8x Blackwell GPUs
+docker compose -f examples/docker-compose-glm5.yml up -d
+```
+
+See `examples/` for full docker-compose files with hardware requirements and configuration options.
+
 ## Run
 
 ### With model profile
