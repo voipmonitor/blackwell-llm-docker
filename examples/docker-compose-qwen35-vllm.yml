@@ -1,0 +1,67 @@
+# Qwen3.5-397B-A17B NVFP4 on 4x Blackwell GPUs (vLLM)
+#
+# Usage:
+#   docker compose -f examples/docker-compose-qwen35-vllm.yml up -d
+#
+# Requirements:
+#   - 4x NVIDIA RTX PRO 6000 Blackwell (96GB each) or equivalent
+#   - CUDA driver 575+
+#   - HuggingFace model cache at ~/.cache/huggingface
+#
+# First run downloads ~200GB model weights (lukealonso/Qwen3.5-397B-A17B-NVFP4)
+#
+# API endpoint: http://localhost:5000/v1 (OpenAI-compatible)
+
+services:
+  vllm-qwen35:
+    image: voipmonitor/vllm:cu130
+    container_name: vllm-qwen35
+    ipc: host
+    shm_size: "8g"
+    network_mode: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    environment:
+      - VLLM_LOG_STATS_INTERVAL=1
+      - NCCL_P2P_LEVEL=SYS
+      - SAFETENSORS_FAST_GPU=1
+      # Uncomment to select specific GPUs:
+      # - NVIDIA_VISIBLE_DEVICES=4,5,6,7
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - jit-cache:/cache/jit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 4
+              capabilities: [gpu]
+    entrypoint: >
+      python3 -m vllm.entrypoints.openai.api_server
+      --model lukealonso/Qwen3.5-397B-A17B-NVFP4
+      --host 0.0.0.0 --port 5000
+      --served-model-name Qwen3_5-397B-A17B-NVFP4
+      --trust-remote-code
+      --tensor-parallel-size 4
+      --gpu-memory-utilization 0.9
+      --max-num-batched-tokens 8192
+      --max-num-seqs 128
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --reasoning-parser qwen3
+      --mm-encoder-tp-mode data
+      --mm-processor-cache-type shm
+      --enable-prefix-caching
+      --enable-chunked-prefill
+      --speculative-config '{"method":"mtp","num_speculative_tokens":2}'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+volumes:
+  jit-cache:
