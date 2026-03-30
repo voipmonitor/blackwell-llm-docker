@@ -1,30 +1,67 @@
 # Blackwell LLM Docker
 
-Docker images for LLM inference on NVIDIA Blackwell GPUs (SM120). Pre-built images are available on Docker Hub:
+Docker images for LLM inference on NVIDIA Blackwell GPUs (SM120).
 
-- **[voipmonitor/sglang:test-cu132](https://hub.docker.com/r/voipmonitor/sglang)**
-
-## Image
+## Images
 
 | Image | Dockerfile | Stack |
 |-------|-----------|-------|
-| `voipmonitor/sglang:test-cu132` | `Dockerfile.sglang` | CUDA 13.2 base, PyTorch 2.12 nightly (cu132), FlashInfer nightly, Triton 3.6.0, SGLang from source |
+| `voipmonitor/sglang:cu130` | `Dockerfile.sglang-cu130` | CUDA 13.0, torch 2.11 stable cu130, FlashInfer source (PR #2913), SGLang + b12x + PCIe allreduce |
+| `voipmonitor/sglang:cu132` | `Dockerfile.sglang-cu132` | CUDA 13.2, torch 2.12 from source, FlashInfer source (PR #2913), SGLang + b12x |
+| `voipmonitor/vllm:cu130` | `Dockerfile.vllm-cu130` | CUDA 13.0, torch 2.11 stable cu130, FlashInfer source (PR #2913), vLLM + cherry-picks |
 
-Includes: CUTLASS 4.x DSL, sgl-kernel (SM120+SM90), PCIe allreduce, b12x NVFP4 backend, pre-tuned Triton MoE configs for RTX PRO 6000 Blackwell, JIT cache management.
+Base image for cu132 (torch + FlashInfer compiled from source):
+
+| Image | Dockerfile | Stack |
+|-------|-----------|-------|
+| `voipmonitor/torch:cu132` | `Dockerfile.torch-cu132` | CUDA 13.2, torch 2.12 from source (no pip nvidia-*), FlashInfer from source |
 
 ## Run
+
+### With model profile
 
 ```bash
 docker run --gpus all --ipc=host --shm-size=8g \
   -v ~/.cache/huggingface:/root/.cache/huggingface \
-  -v jit-cache:/cache/jit -p 5000:5000 voipmonitor/sglang:test-cu132 \
+  -v jit-cache:/cache/jit -p 5000:5000 \
+  -e MODEL_PROFILE=qwen35-b12x \
+  voipmonitor/sglang:cu130
+```
+
+Available profiles: `qwen35-b12x`, `glm5-nvfp4` (see `profiles/` directory).
+
+### Direct command
+
+```bash
+docker run --gpus all --ipc=host --shm-size=8g \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  -v jit-cache:/cache/jit -p 5000:5000 \
+  voipmonitor/sglang:cu130 \
   python -m sglang.launch_server --model-path <model> --tp 8 --host 0.0.0.0 --port 5000
 ```
 
-## Build from source
+### vLLM
 
 ```bash
-docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang -t voipmonitor/sglang:test-cu132 .
+docker run --gpus all --ipc=host --shm-size=8g \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  -p 5000:5000 \
+  voipmonitor/vllm:cu130 \
+  --model <model> --tensor-parallel-size 4 --host 0.0.0.0 --port 5000
+```
+
+## Build
+
+```bash
+# SGLang cu130
+docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang-cu130 -t voipmonitor/sglang:cu130 .
+
+# SGLang cu132 (requires torch base first)
+docker build -f Dockerfile.torch-cu132 -t voipmonitor/torch:cu132 .
+docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang-cu132 -t voipmonitor/sglang:cu132 .
+
+# vLLM cu130
+docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.vllm-cu130 -t voipmonitor/vllm:cu130 .
 ```
 
 ## Hardware
@@ -33,47 +70,12 @@ docker build --build-arg CACHEBUST=$(date +%s) -f Dockerfile.sglang -t voipmonit
 - CUDA driver 575+
 - 96 GB VRAM per GPU
 
-## Changelog
+## Key features
 
-### 2026-03-29 (v3)
-- **PyTorch upgraded to 2.12 nightly cu132** — was incorrectly on 2.11 stable cu130 since 2026-03-28 (torch was wrongly blamed for crashes caused by CUTLASS header mismatch)
-- **CUTLASS header overwrite removed** — previous builds copied git-main CUTLASS headers into FlashInfer's bundled copy, causing version mismatch between headers and compiled kernels. This was the root cause of MTP speculative decoding crashes (illegal memory access). FlashInfer nightly ships with matching headers.
-- **CCCL symlink added** — CUDA 13.2 moved headers under `cccl/` prefix; without the symlink (`cccl/cuda` → `cuda`), some JIT-compiled kernels fail at runtime
-- **sgl-kernel build moved to end** — sgl-kernel links against torch at compile time. Building it last (after all pip deps are finalized) ensures it links against torch 2.12 cu132, not an intermediate version that may be downgraded by transitive pip dependencies
-- **transformers pinned to <5.4** — transformers 5.4+ uses composite config for Qwen3.5 (`vision_config` as dict instead of object), breaking model loading
-- **sm_100a/sm_103a gencode sed hack removed** — `ENABLE_BELOW_SM90=0` + `CMAKE_CUDA_ARCHITECTURES="120a"` handles this cleanly
-
-### 2026-03-29 (v2)
-- **New cherry-picks:**
-  - [PR #20182](https://github.com/sgl-project/sglang/pull/20182) — fix mamba/GDN memory leak on request abort under concurrency (crash: `token_to_kv_pool_allocator memory leak detected!`)
-  - [PR #20433](https://github.com/sgl-project/sglang/pull/20433) — async extra_buffer SSM state tracking for NEXTN spec-v2 (~15% MTP throughput improvement)
-  - [PR #20445](https://github.com/sgl-project/sglang/pull/20445) — remove GPU sync points in mamba/GDN track metadata (perf)
-  - [PR #21599](https://github.com/sgl-project/sglang/pull/21599) — adaptive speculative decoding for EAGLE topk=1 (dynamically adjusts `speculative_num_steps` based on acceptance rate, enable with `--speculative-adaptive`)
-  - [PR #21601](https://github.com/sgl-project/sglang/pull/21601) — FP4 KV cache support for SM120 GPUs (`--kv-cache-dtype nvfp4`)
-- **Conflict resolution scripts** for PRs with merge conflicts (no `|| true`):
-  - `fix-mamba-leak-conflict.py` — resolves #20182 conflict (hisparse_coordinator in refactored helper)
-  - `fix-fp4-kvcache-conflict.py` — resolves #21601 conflicts (flashinfer piecewise CUDA graph + trtllm skip_softmax params)
-
-### 2026-03-29
-- **KLD logit capture patch rewritten:**
-  - Fixed MTP head contamination (doubled files, inflated KLD by ~18%)
-  - Changed log-prob storage from float16 to float32 (matches vLLM PR #35961)
-  - Auto-filters MTP/NextN speculative heads via call stack inspection
-- **Added `fix-nvfp4-dual-gencode.py` patch** — removes 10.3a from nvfp4 JIT arch list to prevent SGL_CUDA_ARCH mismatch on SM120
-- **Corrected KLD results** (Qwen3.5-397B-A17B vs FP8 reference):
-
-  | Model | Mean KLD |
-  |-------|----------|
-  | AWQ (QuantTrio) | 0.024 |
-  | nvidia/NVFP4 | 0.035 |
-  | lukealonso/NVFP4 | 0.036 |
-
-### 2026-03-28
-- **FlashInfer switched from source build to nightly pip**
-- **Triton updated from 3.5.1 to 3.6.0**
-- **Cherry-picks cleaned up** — removed merged PRs, added syntax verification
-- **PR #19963 adapted** for refactored ArchInfo code
-- **Removed vLLM image**
-
-### 2026-03-26
-- Initial CUDA 13.2 build
+- **FlashInfer from source** with PR #2913 (GDC for SM120) — no prebuilt cubin/jit-cache that would override patched kernels
+- **b12x backend** (lukealonso) — TP-only NVFP4 MoE/GEMM for SM120
+- **PCIe allreduce** — custom allreduce for PCIe topologies (cu130 only)
+- **nvidia-cublas pinned to 13.1** (cu130) — 13.3 causes illegal memory access on CUDA 13.0 toolkit
+- **Model profiles** — preconfigured launch configs via `MODEL_PROFILE` env var
+- **Adaptive speculative decoding** (PR #21599) — dynamically adjusts num_steps
+- Pre-tuned Triton MoE configs for RTX PRO 6000 Blackwell
