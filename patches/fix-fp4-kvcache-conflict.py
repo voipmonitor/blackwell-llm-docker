@@ -155,7 +155,34 @@ def fix_trtllm():
     print('  trtllm_mha_backend.py: resolved (3 conflicts, skip_softmax + kv_cache_sf/mask)')
 
 
+def fix_generic_both(path, label):
+    """Resolve conflicts by keeping both HEAD and incoming sides."""
+    with open(path) as f:
+        src = f.read()
+
+    if '<<<<<<<' not in src:
+        print(f'  {label}: no conflicts')
+        return
+
+    pattern = r'<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> [^\n]*\n'
+    resolved = re.sub(pattern, lambda m: m.group(1) + m.group(2), src, flags=re.DOTALL)
+
+    if '<<<<<<<' in resolved:
+        print(f'ERROR: unresolved conflict markers remain in {label}', file=sys.stderr)
+        sys.exit(1)
+
+    with open(path, 'w') as f:
+        f.write(resolved)
+    print(f'  {label}: resolved (kept both sides)')
+
+
 print('Resolving PR #21601 cherry-pick conflicts...')
 fix_flashinfer()
 fix_trtllm()
+fix_generic_both(
+    '/opt/sglang/python/sglang/srt/mem_cache/memory_pool.py',
+    'memory_pool.py')
+fix_generic_both(
+    '/opt/sglang/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py',
+    'model_runner_kv_cache_mixin.py')
 print('OK: PR #21601 conflicts resolved')

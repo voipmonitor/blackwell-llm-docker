@@ -1,0 +1,266 @@
+# =============================================================================
+# PyTorch + FlashInfer from source on CUDA 13.2 — no pip nvidia-* packages
+#
+# All CUDA libraries (cuBLAS, cuDNN, NCCL, cuSOLVER, etc.) come from the
+# CUDA toolkit in the base image. This eliminates version mismatches between
+# pip nvidia-* wheels and the actual toolkit.
+#
+# Multi-stage build:
+#   Stage 1 (build): compile torch + torchvision + FlashInfer → produce wheels
+#   Stage 2 (runtime): clean devel image + wheels installed
+#
+# Build:
+#   docker build -f Dockerfile.torch-cu132 -t voipmonitor/torch:cu132 .
+#
+# Compile time: ~2-4 hours depending on hardware and MAX_JOBS
+# =============================================================================
+
+ARG CUDA_VERSION=13.2.0
+ARG UBUNTU_VERSION=24.04
+
+# =============================================================================
+# Stage 1: build — compile PyTorch + FlashInfer from source
+# =============================================================================
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION} AS build
+
+ARG PYTHON_VERSION=3.12
+ARG MAX_JOBS=128
+ARG TORCH_CUDA_ARCH_LIST="9.0a;12.0a"
+ARG PYTORCH_BRANCH=main
+ARG DEBIAN_FRONTEND=noninteractive
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python${PYTHON_VERSION} \
+    python${PYTHON_VERSION}-dev \
+    python${PYTHON_VERSION}-venv \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    build-essential \
+    cmake \
+    ninja-build \
+    ccache \
+    pkg-config \
+    libssl-dev \
+    libffi-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libgomp1 \
+    numactl \
+    libnuma-dev \
+    libibverbs-dev \
+    libopenblas-dev \
+    libnccl-dev \
+    libnccl2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python setup
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 1
+
+# Create venv
+RUN python3 -m venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}"
+
+RUN pip install --upgrade pip setuptools wheel
+
+# ccache
+ENV CCACHE_DIR=/root/.ccache \
+    CMAKE_C_COMPILER_LAUNCHER=ccache \
+    CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+    CMAKE_CUDA_COMPILER_LAUNCHER=ccache
+
+# -- Clone PyTorch -------------------------------------------------------------
+WORKDIR /build
+RUN git clone --recursive --depth 1 --branch ${PYTORCH_BRANCH} \
+    https://github.com/pytorch/pytorch.git && \
+    cd pytorch && \
+    git submodule sync && \
+    git submodule update --init --recursive --depth 1
+
+# -- Install Python build deps ------------------------------------------------
+WORKDIR /build/pytorch
+# Pin cmake < 4.0 (cmake 4.3 removed CMake < 3.5 compat, breaks PyTorch submodules)
+RUN pip install -r requirements.txt && \
+    pip install ninja "cmake>=3.26,<4.0" pyyaml typing-extensions
+
+# -- Compile PyTorch -----------------------------------------------------------
+# Use system CUDA libraries (cuBLAS, cuDNN, NCCL) from the toolkit image.
+# No pip nvidia-* packages involved.
+ENV USE_CUDA=1 \
+    USE_CUDNN=1 \
+    USE_NCCL=1 \
+    USE_SYSTEM_NCCL=1 \
+    USE_DISTRIBUTED=1 \
+    USE_MKLDNN=1 \
+    USE_OPENMP=1 \
+    BUILD_TEST=0 \
+    BUILD_CAFFE2=0 \
+    TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST} \
+    MAX_JOBS=${MAX_JOBS} \
+    TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
+
+# NCCL from toolkit
+ENV NCCL_ROOT=/usr \
+    NCCL_INCLUDE_DIR=/usr/include \
+    NCCL_LIB_DIR=/usr/lib/x86_64-linux-gnu
+
+RUN python setup.py bdist_wheel -d /build/wheels
+
+# Verify wheel was produced
+RUN ls -la /build/wheels/torch-*.whl
+
+# -- Build torchvision ---------------------------------------------------------
+WORKDIR /build
+RUN pip install /build/wheels/torch-*.whl && \
+    git clone --depth 1 https://github.com/pytorch/vision.git && \
+    cd vision && \
+    FORCE_CUDA=1 \
+    TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST} \
+    MAX_JOBS=${MAX_JOBS} \
+    python setup.py bdist_wheel -d /build/wheels
+
+# -- Build FlashInfer from source ----------------------------------------------
+WORKDIR /build
+RUN pip install ninja cmake packaging numpy einops "apache-tvm-ffi>=0.1.6" \
+    "nvidia-cudnn-frontend>=1.13.0" pynvml nvidia-ml-py
+
+RUN git clone --recursive https://github.com/flashinfer-ai/flashinfer.git && \
+    cd flashinfer && \
+    git config user.email "build@docker" && git config user.name "build" && \
+    echo "=== FlashInfer PR #2913: GDC for SM90/SM100/SM120 ===" && \
+    git fetch origin pull/2913/head:pr-2913 && \
+    git merge --no-commit --no-ff pr-2913 || \
+    (git checkout --theirs csrc/nv_internal/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/arch/grid_dependency_control.h && \
+     git add -A) && \
+    FLASHINFER_CUDA_ARCH_LIST="12.0a" \
+    FLASHINFER_ENABLE_SM90=0 \
+    MAX_JOBS=${MAX_JOBS} \
+    pip wheel . --no-deps --wheel-dir /build/wheels
+
+RUN ls -la /build/wheels/
+
+# =============================================================================
+# Stage 2: runtime — clean image with wheels installed
+# =============================================================================
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION} AS runtime
+
+ARG PYTHON_VERSION=3.12
+ARG DEBIAN_FRONTEND=noninteractive
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Runtime + build essentials (needed for downstream JIT compilation)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python${PYTHON_VERSION} \
+    python${PYTHON_VERSION}-dev \
+    python${PYTHON_VERSION}-venv \
+    python3-pip \
+    git \
+    git-lfs \
+    wget \
+    curl \
+    build-essential \
+    cmake \
+    ninja-build \
+    ccache \
+    pkg-config \
+    libssl-dev \
+    libffi-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libgomp1 \
+    numactl \
+    libnuma-dev \
+    libibverbs-dev \
+    libopenblas0 \
+    libnccl2 \
+    pciutils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 1
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Create venv
+RUN uv venv /opt/venv --python python${PYTHON_VERSION}
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}"
+
+RUN uv pip install pip setuptools wheel
+
+# ccache config
+ENV CCACHE_DIR=/root/.ccache \
+    CMAKE_C_COMPILER_LAUNCHER=ccache \
+    CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+    CMAKE_CUDA_COMPILER_LAUNCHER=ccache
+
+# -- Install wheels from build stage ------------------------------------------
+COPY --from=build /build/wheels/ /tmp/wheels/
+RUN pip install /tmp/wheels/torch-*.whl /tmp/wheels/torchvision-*.whl && \
+    pip install /tmp/wheels/flashinfer*.whl && \
+    rm -rf /tmp/wheels
+
+# -- Install triton (--no-deps to prevent nvidia-* pulls) ----------------------
+RUN pip install triton --no-deps
+
+# -- FlashInfer cubin + JIT cache (arch-specific prebuilt binaries) ------------
+RUN pip install -U --pre flashinfer-cubin --index-url https://flashinfer.ai/whl/nightly/ --no-deps || true
+RUN pip install -U --pre flashinfer-jit-cache --index-url https://flashinfer.ai/whl/nightly/cu132 --no-deps || true
+
+# -- FlashInfer runtime deps (pure Python, no CUDA libs) -----------------------
+RUN pip install "apache-tvm-ffi>=0.1.6" "nvidia-cudnn-frontend>=1.13.0" \
+    pynvml nvidia-ml-py packaging numpy einops --no-deps 2>/dev/null || \
+    pip install "apache-tvm-ffi>=0.1.6" "nvidia-cudnn-frontend>=1.13.0" \
+    pynvml nvidia-ml-py packaging numpy einops
+
+# -- CUTLASS DSL (closed-source NVVM blob — must use pip) ----------------------
+# libs-cu13 MUST be reinstalled last (libs-base overwrites NVVM 13.1 with 12.9)
+# Only cutlass-dsl packages allowed — no cublas/cudnn/nccl from pip
+RUN pip install "nvidia-cutlass-dsl[cu13]" && \
+    pip install --force-reinstall --no-deps nvidia-cutlass-dsl-libs-cu13
+
+# -- Verify no unwanted nvidia CUDA runtime libs from pip ----------------------
+RUN echo "=== nvidia pip packages ===" && \
+    pip list 2>/dev/null | grep -i nvidia && \
+    echo "=== check: no cublas/cudnn-cu/nccl-cu from pip ===" && \
+    ! pip list 2>/dev/null | grep -iE "^nvidia-cublas |^nvidia-cuda-runtime |^nvidia-cudnn-cu|^nvidia-nccl-cu|^nvidia-cusolver |^nvidia-cusparse |^nvidia-cufft |^nvidia-curand " && \
+    echo "OK: clean"
+
+# -- CCCL symlink (CUDA 13.2 moved headers under cccl/ prefix) ----------------
+RUN if [ -d /usr/local/cuda/targets/x86_64-linux/include/cccl ] && \
+       [ ! -e /usr/local/cuda/targets/x86_64-linux/include/cccl/cuda ]; then \
+        ln -sf /usr/local/cuda/targets/x86_64-linux/include/cuda \
+               /usr/local/cuda/targets/x86_64-linux/include/cccl/cuda && \
+        echo "OK: CCCL symlink created"; \
+    else \
+        echo "OK: CCCL symlink not needed"; \
+    fi
+
+# -- Verify --------------------------------------------------------------------
+ENV FLASHINFER_DISABLE_VERSION_CHECK=1
+RUN python -c "\
+import torch; \
+print(f'PyTorch {torch.__version__}'); \
+print(f'CUDA {torch.version.cuda}'); \
+print(f'cuDNN {torch.backends.cudnn.version()}'); \
+print(f'NCCL {torch.cuda.nccl.version()}'); \
+import flashinfer; \
+print(f'FlashInfer {flashinfer.__version__}'); \
+"
+
+WORKDIR /workspace
