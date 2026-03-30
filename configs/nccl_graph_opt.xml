@@ -1,0 +1,49 @@
+<graphs version="1">
+  <graph id="0" pattern="4" crossnic="0" nchannels="2" speedintra="24" speedinter="24" latencyinter="0" typeintra="PHB" typeinter="PIX" samechannels="1">
+    <channel>
+      <gpu dev="0"/>
+      <gpu dev="0x1"/>
+      <gpu dev="0x2"/>
+      <gpu dev="0x3"/>
+      <gpu dev="0x4"/>
+      <gpu dev="0x5"/>
+      <gpu dev="0x6"/>
+      <gpu dev="0x7"/>
+    </channel>
+    <channel>
+      <gpu dev="0"/>
+      <gpu dev="0x1"/>
+      <gpu dev="0x2"/>
+      <gpu dev="0x3"/>
+      <gpu dev="0x4"/>
+      <gpu dev="0x5"/>
+      <gpu dev="0x6"/>
+      <gpu dev="0x7"/>
+    </channel>
+  </graph>
+  <graph id="1" pattern="1" crossnic="0" nchannels="2" speedintra="24" speedinter="24" latencyinter="0" typeintra="PHB" typeinter="PIX" samechannels="1">
+    <channel>
+      <gpu dev="0"/>
+      <gpu dev="0x1"/>
+      <gpu dev="0x2"/>
+      <gpu dev="0x3"/>
+      <gpu dev="0x4"/>
+      <gpu dev="0x5"/>
+      <gpu dev="0x6"/>
+      <gpu dev="0x7"/>
+    </channel>
+    <channel>
+      <gpu dev="0"/>
+      <gpu dev="0x1"/>
+      <gpu dev="0x2"/>
+      <gpu dev="0x3"/>
+      <gpu dev="0x4"/>
+      <gpu dev="0x5"/>
+      <gpu dev="0x6"/>
+      <gpu dev="0x7"/>
+    </channel>
+  </graph>
+  <graph id="4" pattern="6" crossnic="0" nchannels="0" speedintra="0" speedinter="0" latencyinter="0" typeintra="LOC" typeinter="LOC" samechannels="0"/>
+  <graph id="2" pattern="3" crossnic="0" nchannels="0" speedintra="0" speedinter="0" latencyinter="0" typeintra="LOC" typeinter="LOC" samechannels="0"/>
+  <graph id="3" pattern="5" crossnic="0" nchannels="0" speedintra="0" speedinter="0" latencyinter="0" typeintra="LOC" typeinter="LOC" samechannels="0"/>
+</graphs>

@@ -552,4 +552,7 @@ RUN python /tmp/smoke_test.py && rm /tmp/smoke_test.py
 # Model profiles (selected via MODEL_PROFILE env var)
 COPY profiles/ /profiles/
 
+# NCCL topology graph for PCIe multi-GPU
+COPY configs/nccl_graph_opt.xml /etc/nccl_graph_opt.xml
+
 ENTRYPOINT ["/entrypoint.sh"]
