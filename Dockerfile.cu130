@@ -176,7 +176,7 @@ RUN uv pip install --upgrade cmake
 RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu13' in v, f'WRONG TORCH: {v}'"
 
 # =============================================================================
-# Stage 3: FlashInfer nightly (pip, not from source)
+# Stage 3: FlashInfer from source (with PR #2913: GDC for SM120)
 # =============================================================================
 FROM deps AS flashinfer-build
 
@@ -185,18 +185,29 @@ RUN uv pip install --upgrade setuptools pip && \
     uv pip install "apache-tvm-ffi>=0.1.6" "nvidia-cudnn-frontend>=1.13.0" packaging \
     pynvml nvidia-ml-py requests numpy einops click tabulate tqdm
 
-# Install FlashInfer nightly from pip (--no-deps to avoid torch downgrade)
-RUN pip install -U --pre flashinfer-python --index-url https://flashinfer.ai/whl/nightly/ --no-deps
-# Install FlashInfer dependencies from PyPI (--no-deps to avoid torch downgrade)
-RUN pip install --no-deps flashinfer-python || true
-# Pre-compiled CUDA binaries
-RUN pip install -U --pre flashinfer-cubin --index-url https://flashinfer.ai/whl/nightly/
-# JIT cache for CUDA 13.0
-RUN pip install -U --pre flashinfer-jit-cache --index-url https://flashinfer.ai/whl/nightly/cu130
+# Build FlashInfer from source with PR #2913 (GDC for SM90/SM100/SM120)
+WORKDIR /build
+RUN git clone --recursive https://github.com/flashinfer-ai/flashinfer.git && \
+    cd flashinfer && \
+    git config user.email "build@docker" && git config user.name "build" && \
+    echo "=== FlashInfer PR #2913: GDC for SM90/SM100/SM120 ===" && \
+    git fetch origin pull/2913/head:pr-2913 && \
+    git merge --no-commit --no-ff pr-2913 || \
+    (git checkout --theirs csrc/nv_internal/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/arch/grid_dependency_control.h && \
+     git add -A) && \
+    FLASHINFER_CUDA_ARCH_LIST="12.0a" \
+    FLASHINFER_ENABLE_SM90=0 \
+    MAX_JOBS=${MAX_JOBS} \
+    pip install --no-build-isolation --no-deps .
+
+# NOTE: flashinfer-cubin and flashinfer-jit-cache are intentionally NOT installed.
+# They contain pre-compiled kernels without PR #2913 (GDC for SM120) patches.
+# FlashInfer will JIT-compile kernels from the patched source at first runtime,
+# then cache them in /cache/jit/flashinfer (mount a volume for persistence).
 
 # Verify FlashInfer
 ENV FLASHINFER_DISABLE_VERSION_CHECK=1
-RUN python -c "import flashinfer; print(f'FlashInfer: {flashinfer.__version__}')"
+RUN python -c "import flashinfer; print(f'FlashInfer: {getattr(flashinfer, \"__version__\", \"source-install\")}')"
 
 # =============================================================================
 # Stage 4: SGLang from source (sgl-kernel + editable install)
@@ -208,15 +219,26 @@ ARG NVCC_THREADS
 
 RUN git clone --recursive https://github.com/sgl-project/sglang.git /opt/sglang
 
+WORKDIR /opt/sglang
+RUN git config user.email "build@docker" && git config user.name "build"
+
+# -- PCIe allreduce FIRST (rebased on main, must go before other cherry-picks) -
+# e4b4d46: rebased PCIe allreduce
+COPY patches/fix-pcie-allreduce-rebase-conflict.py /tmp/patches/fix-pcie-allreduce-rebase-conflict.py
+RUN git remote add lukealonso https://github.com/lukealonso/sglang.git && \
+    git fetch lukealonso e4b4d46ce3b50f6c345e53ab2986125f369e2a73 c70c22a15a16961c65b8c61f7f18fae07995ec38 && \
+    echo "=== PCIe allreduce (e4b4d46 rebased) ===" && \
+    git cherry-pick --no-commit e4b4d46ce3b50f6c345e53ab2986125f369e2a73; \
+    python3 /tmp/patches/fix-pcie-allreduce-rebase-conflict.py && \
+    git add -A
+
 # Cherry-pick unmerged PRs.
 # MERGED into main (removed from cherry-picks): #19977, #20103, #20266, #20390, #20396, #20539, #20604, #19961, #20232, #20441
 # CLOSED (removed): #19897, #20110
-WORKDIR /opt/sglang
 COPY patches/fix-cuda-arch-suffix.py /tmp/patches/fix-cuda-arch-suffix.py
 COPY patches/fix-mamba-leak-conflict.py /tmp/patches/fix-mamba-leak-conflict.py
 COPY patches/fix-fp4-kvcache-conflict.py /tmp/patches/fix-fp4-kvcache-conflict.py
-RUN git config user.email "build@docker" && git config user.name "build" && \
-    git fetch origin \
+RUN git fetch origin \
         pull/20059/head:pr-20059 \
         pull/20114/head:pr-20114 \
         pull/20182/head:pr-20182 \
@@ -278,25 +300,17 @@ RUN git fetch origin pull/21314/head:pr-21314 && \
     | git apply --3way --allow-empty && \
     git add -A
 
-# PCIe allreduce + b12x integration (lukealonso fork)
-# Cherry-pick has known merge conflicts — resolver script handles them
-# Source commits: 5bb89b03 (PCIe allreduce) + c70c22a1 (b12x backend)
-RUN git remote add lukealonso https://github.com/lukealonso/sglang.git && \
-    git fetch lukealonso 5bb89b03afe46fbd012da9f50bb5992673342123 c70c22a15a16961c65b8c61f7f18fae07995ec38
+# b12x backend (lukealonso fork) — PCIe allreduce already applied above
 COPY patches/fix-pcie-allreduce-conflict.py /tmp/fix-pcie-allreduce-conflict.py
 COPY patches/fix-modelopt-merge.py /tmp/fix-modelopt-merge.py
-RUN echo "=== PCIe allreduce (5bb89b03) ===" && \
-    git cherry-pick --no-commit 5bb89b03afe46fbd012da9f50bb5992673342123; \
-    python /tmp/fix-pcie-allreduce-conflict.py && \
-    git add -A && \
-    echo "=== b12x backend (c70c22a1) ===" && \
+RUN echo "=== b12x backend (c70c22a1) ===" && \
     git cherry-pick --no-commit c70c22a15a16961c65b8c61f7f18fae07995ec38; \
     python /tmp/fix-pcie-allreduce-conflict.py && \
     python /tmp/fix-modelopt-merge.py && \
     git add -A && \
     rm /tmp/fix-pcie-allreduce-conflict.py /tmp/fix-modelopt-merge.py && \
     python3 -c "import ast,glob; [ast.parse(open(f,encoding='utf-8-sig').read(),f) for f in glob.glob('python/sglang/srt/**/*.py',recursive=True)]" && \
-    echo "=== PCIe allreduce + b12x applied, syntax verified ==="
+    echo "=== b12x applied, syntax verified ==="
 
 # Install SGLang's runtime deps (BEFORE sgl-kernel build so deps don't downgrade torch)
 # First: safe packages (no torch dependency)
@@ -523,19 +537,16 @@ RUN python /tmp/patches/sglang-kld-logit-capture.py && \
     rm -rf /tmp/patches
 
 # Smoke test (import only, no GPU needed)
-RUN python -c "\
-import torch; \
-import flashinfer; \
-import transformers; \
-import sglang; \
-print(f'PyTorch:      {torch.__version__}'); \
-print(f'CUDA:         {torch.version.cuda}'); \
-print(f'FlashInfer:   {flashinfer.__version__}'); \
-print(f'Transformers: {transformers.__version__}'); \
-print(f'SGLang:       {getattr(sglang, \"__version__\", \"editable-install\")}'); \
-print(f'DeepGEMM:     bundled in sgl-kernel'); \
-assert 'cu13' in torch.__version__, f'WRONG TORCH: {torch.__version__}'; \
-print('OK: torch 2.11 stable cu130, CUDA 13.0 toolkit, sgl-kernel from source'); \
-"
+COPY <<'SMOKE' /tmp/smoke_test.py
+import torch, flashinfer, transformers, sglang
+print(f'PyTorch:      {torch.__version__}')
+print(f'CUDA:         {torch.version.cuda}')
+print(f'FlashInfer:   {getattr(flashinfer, "__version__", "source-install")}')
+print(f'Transformers: {transformers.__version__}')
+print(f'SGLang:       {getattr(sglang, "__version__", "editable-install")}')
+assert 'cu13' in torch.__version__, f'WRONG TORCH: {torch.__version__}'
+print('OK: smoke test passed')
+SMOKE
+RUN python /tmp/smoke_test.py && rm /tmp/smoke_test.py
 
 ENTRYPOINT ["/entrypoint.sh"]
