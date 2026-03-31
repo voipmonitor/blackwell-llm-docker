@@ -217,100 +217,15 @@ FROM flashinfer-build AS sglang-build
 ARG MAX_JOBS
 ARG NVCC_THREADS
 
-RUN git clone --recursive https://github.com/sgl-project/sglang.git /opt/sglang
+# Clone from our fork with all PRs pre-merged (no cherry-pick conflicts)
+# See INTEGRATION.md in the repo for the full list of merged PRs and patches
+RUN git clone -b blackwell-cu130 --recursive https://github.com/voipmonitor/sglang.git /opt/sglang
 
 WORKDIR /opt/sglang
-RUN git config user.email "build@docker" && git config user.name "build"
 
-# -- PCIe allreduce FIRST (rebased on main, must go before other cherry-picks) -
-# e4b4d46: rebased PCIe allreduce
-COPY patches/fix-pcie-allreduce-rebase-conflict.py /tmp/patches/fix-pcie-allreduce-rebase-conflict.py
-RUN git remote add lukealonso https://github.com/lukealonso/sglang.git && \
-    git fetch lukealonso e4b4d46ce3b50f6c345e53ab2986125f369e2a73 c70c22a15a16961c65b8c61f7f18fae07995ec38 && \
-    echo "=== PCIe allreduce (e4b4d46 rebased) ===" && \
-    git cherry-pick --no-commit e4b4d46ce3b50f6c345e53ab2986125f369e2a73; \
-    python3 /tmp/patches/fix-pcie-allreduce-rebase-conflict.py && \
-    git add -A
-
-# Cherry-pick unmerged PRs.
-# MERGED into main (removed from cherry-picks): #19977, #20103, #20266, #20390, #20396, #20539, #20604, #19961, #20232, #20441
-# CLOSED (removed): #19897, #20110
+# Apply arch suffix fix (not in fork — runtime patch for SM120 gencode)
 COPY patches/fix-cuda-arch-suffix.py /tmp/patches/fix-cuda-arch-suffix.py
-COPY patches/fix-mamba-leak-conflict.py /tmp/patches/fix-mamba-leak-conflict.py
-COPY patches/fix-fp4-kvcache-conflict.py /tmp/patches/fix-fp4-kvcache-conflict.py
-RUN git fetch origin \
-        pull/20059/head:pr-20059 \
-        pull/20114/head:pr-20114 \
-        pull/20182/head:pr-20182 \
-        pull/20275/head:pr-20275 \
-        pull/20433/head:pr-20433 \
-        pull/20439/head:pr-20439 \
-        pull/20445/head:pr-20445 \
-        pull/20448/head:pr-20448 \
-        pull/20460/head:pr-20460 \
-        pull/20479/head:pr-20479 \
-        pull/20534/head:pr-20534 \
-        pull/20949/head:pr-20949 \
-        pull/21599/head:pr-21599 \
-        pull/21601/head:pr-21601 && \
-    echo "=== PR #19963: Fix arch suffix (adapted for refactored code) ===" && \
-    python3 /tmp/patches/fix-cuda-arch-suffix.py && \
-    echo "=== PR #20439: Fix AWQ modules_to_not_convert for FusedMoE ===" && \
-    git cherry-pick --no-commit 23aa58fa1b7c && \
-    echo "=== PR #20059: Fuse normal_decode_set_metadata into Triton kernel ===" && \
-    git cherry-pick --no-commit 1e5d20c64aac e0137cc66274 3345601bab22 556f00b70aec 39f312d94c5e && \
-    echo "=== PR #20114: support HybridLinearAttnBackend in TboAttnBackend ===" && \
-    git cherry-pick --no-commit b961a4124855 && \
-    echo "=== PR #20275: GLM-5 thinking budget logit processor ===" && \
-    git cherry-pick --no-commit 45baf2e56ab5 42b872677423 && \
-    echo "=== PR #20448: mm_input_embeds in piecewise graph replay ===" && \
-    git cherry-pick --no-commit 6bcb570f95a8 && \
-    echo "=== PR #20460: HiCache synchronization for context parallelism ===" && \
-    git cherry-pick --no-commit 614b7815b53f && \
-    echo "=== PR #20479: Triton MLA FP8 KV cache (SM120) ===" && \
-    git cherry-pick --no-commit 3019db47e505 64cc6ffa1d4d 3e8774f6f6d1 0e25a1cb74c4 b6551f2ba4af c69aa5debd47 75d4edbbadf9 && \
-    echo "=== PR #20534: FP8 K/K_scale for CP indexer prefill gather ===" && \
-    git cherry-pick --no-commit 4578257732bf f695b901400833 && \
-    echo "=== PR #20949: cuBLAS/cuBLASLt warmup for BF16 ===" && \
-    git cherry-pick --no-commit f6c25c12c && \
-    echo "=== PR #21599: Adaptive speculative decoding for EAGLE topk=1 ===" && \
-    git cherry-pick --no-commit 06488d367 5f9b9554a 0fc903cc5 6e8f2abe4 e486262df 3200fa2f9 3bd9c1e15 && \
-    echo "=== PR #20445: Avoid GPU syncs in mamba/GDN track metadata ===" && \
-    git cherry-pick --no-commit cc4a43a1698bd61acbe03af6656f366d963476ce && \
-    echo "=== PR #20433: Async extra buffer track indices (+15% MTP throughput) ===" && \
-    git cherry-pick --no-commit 0433bc88b5ae59b397113fa297b3948fc0910a8a dc0a80235e9175cc4fdb16de900c97134ab408f7 && \
-    echo "=== PR #20182: Fix mamba memory leak (conflict: hisparse_coordinator) ===" && \
-    git cherry-pick --no-commit a38e09ac8ace2676de23d6b646bd15312a3afa6e; \
-    python3 /tmp/patches/fix-mamba-leak-conflict.py && \
-    git add -A && \
-    git cherry-pick --no-commit 6be4ccd441fb588f53cbc474f774c34dde9b571a 27d36e52e1eed766b41b00576e2f081e2fc5e87a && \
-    echo "=== PR #21601: FP4 KV cache SM120 (conflict: flashinfer+trtllm backends) ===" && \
-    git cherry-pick --no-commit 4473ed79fa3054c7fa40ae74717c2cd21d530a15; \
-    python3 /tmp/patches/fix-fp4-kvcache-conflict.py && \
-    git add -A && \
-    echo "=== All cherry-picks applied ==="
-
-# PR #21314 - CUTLASS NVFP4 GEMM improvement of SM120
-# Use git diff to apply changes (avoids merge conflicts)
-RUN git fetch origin pull/21314/head:pr-21314 && \
-    git diff $(git merge-base HEAD pr-21314)..pr-21314 -- \
-        python/sglang/jit_kernel/csrc/gemm/nvfp4/ \
-        python/sglang/srt/layers/quantization/ \
-        python/sglang/srt/server_args.py \
-    | git apply --3way --allow-empty && \
-    git add -A
-
-# b12x backend (lukealonso fork) — PCIe allreduce already applied above
-COPY patches/fix-pcie-allreduce-conflict.py /tmp/fix-pcie-allreduce-conflict.py
-COPY patches/fix-modelopt-merge.py /tmp/fix-modelopt-merge.py
-RUN echo "=== b12x backend (c70c22a1) ===" && \
-    git cherry-pick --no-commit c70c22a15a16961c65b8c61f7f18fae07995ec38; \
-    python /tmp/fix-pcie-allreduce-conflict.py && \
-    python /tmp/fix-modelopt-merge.py && \
-    git add -A && \
-    rm /tmp/fix-pcie-allreduce-conflict.py /tmp/fix-modelopt-merge.py && \
-    python3 -c "import ast,glob; [ast.parse(open(f,encoding='utf-8-sig').read(),f) for f in glob.glob('python/sglang/srt/**/*.py',recursive=True)]" && \
-    echo "=== b12x applied, syntax verified ==="
+RUN python3 /tmp/patches/fix-cuda-arch-suffix.py
 
 # Install SGLang's runtime deps (BEFORE sgl-kernel build so deps don't downgrade torch)
 # First: safe packages (no torch dependency)
