@@ -140,6 +140,15 @@ else:
     print(f"OK: no conflict in {decode_file.name}")
 
 
+# --- 7. eagle_info_v2.py: keep HEAD (upstream's simplified version) ---
+
+eagle_file = SGLANG_ROOT / "speculative/eagle_info_v2.py"
+if resolve_conflict(eagle_file, strategy="head"):
+    print(f"OK: resolved conflict in {eagle_file.name} (keep upstream)")
+else:
+    print(f"OK: no conflict in {eagle_file.name}")
+
+
 # --- Catch-all: FAIL on any remaining conflict markers ---
 # Skip modelopt_quant.py — handled separately by fix-modelopt-merge.py
 

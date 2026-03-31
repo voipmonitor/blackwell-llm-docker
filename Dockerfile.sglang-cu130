@@ -401,6 +401,7 @@ RUN pip uninstall -y \
     pip install --force-reinstall \
     nvidia-nccl-cu13 nvidia-cusparselt-cu13 nvidia-nvshmem-cu13 nvidia-cudnn-cu13 \
     2>/dev/null || true && \
+    pip install --force-reinstall nvidia-cublas==13.1.0.3 && \
     python -c "import torch; print(f'torch {torch.__version__} OK')"
 
 # -- Build sgl-kernel LAST (after all pip deps are finalized) ------------------

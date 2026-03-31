@@ -27,4 +27,5 @@ SGLANG_ARGS="
   --moe-runner-backend b12x
   --model-loader-extra-config '{\"enable_multithread_load\": true, \"num_threads\": 16}'
   --json-model-override-args '{\"index_topk_pattern\": \"FFSFSSSFSSFFFSSSFFFSFSSSSSSFFSFFSFFSSFFFFFFSFFFFFSFFSSSSSSFSFFFSFSSSFSFFSFFSSS\"}'
+  --sleep-on-idle
 "

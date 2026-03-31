@@ -26,4 +26,5 @@ SGLANG_ARGS="
   --attention-backend flashinfer
   --fp4-gemm-backend b12x
   --moe-runner-backend b12x
+  --sleep-on-idle
 "
