@@ -176,7 +176,7 @@ RUN uv pip install --upgrade cmake
 RUN python -c "import torch; v=torch.__version__; print(f'PyTorch {v}'); assert 'cu13' in v, f'WRONG TORCH: {v}'"
 
 # =============================================================================
-# Stage 3: FlashInfer from source (with PR #2913: GDC for SM120)
+# Stage 3: FlashInfer from source (SM120)
 # =============================================================================
 FROM deps AS flashinfer-build
 
@@ -185,24 +185,17 @@ RUN uv pip install --upgrade setuptools pip && \
     uv pip install "apache-tvm-ffi>=0.1.6" "nvidia-cudnn-frontend>=1.13.0" packaging \
     pynvml nvidia-ml-py requests numpy einops click tabulate tqdm
 
-# Build FlashInfer from source with PR #2913 (GDC for SM90/SM100/SM120)
+# Build FlashInfer from source (GDC for SM120 merged in main via PR #2913)
 WORKDIR /build
 RUN git clone --recursive https://github.com/flashinfer-ai/flashinfer.git && \
     cd flashinfer && \
-    git config user.email "build@docker" && git config user.name "build" && \
-    echo "=== FlashInfer PR #2913: GDC for SM90/SM100/SM120 ===" && \
-    git fetch origin pull/2913/head:pr-2913 && \
-    git merge --no-commit --no-ff pr-2913 || \
-    (git checkout --theirs csrc/nv_internal/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/arch/grid_dependency_control.h && \
-     git add -A) && \
     FLASHINFER_CUDA_ARCH_LIST="12.0a" \
     FLASHINFER_ENABLE_SM90=0 \
     MAX_JOBS=${MAX_JOBS} \
     pip install --no-build-isolation --no-deps .
 
 # NOTE: flashinfer-cubin and flashinfer-jit-cache are intentionally NOT installed.
-# They contain pre-compiled kernels without PR #2913 (GDC for SM120) patches.
-# FlashInfer will JIT-compile kernels from the patched source at first runtime,
+# FlashInfer will JIT-compile kernels from source at first runtime,
 # then cache them in /cache/jit/flashinfer (mount a volume for persistence).
 
 # Verify FlashInfer
