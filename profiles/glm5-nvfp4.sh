@@ -19,8 +19,8 @@ SGLANG_ARGS="
   --speculative-eagle-topk 1
   --host 0.0.0.0
   --port 5000
-  --disable-custom-all-reduce
-  --enable-flashinfer-allreduce-fusion
+  --enable-pcie-oneshot-allreduce
+  --enable-pcie-oneshot-allreduce-fusion
   --enable-metrics
   --attention-backend flashinfer
   --fp4-gemm-backend b12x
