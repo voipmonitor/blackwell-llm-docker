@@ -259,6 +259,7 @@ RUN CUTLASS_DSL=$(python -c 'import cutlass.utils.blockscaled_layout as m; print
     python -c 'from cutlass.utils.blockscaled_layout import sm120_make_smem_layout_sfa; print("OK: sm120_make_smem_layout_sfa available")'
 
 # b12x: TP-only NVFP4 MoE/GEMM backend (no-deps to avoid torch conflicts)
+ARG CACHEBUST_B12X=0
 RUN uv pip install b12x --no-deps
 
 
