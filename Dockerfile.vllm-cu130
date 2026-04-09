@@ -1,11 +1,11 @@
 # =============================================================================
 # vLLM inference stack for RTX Blackwell (sm_120a)
 # torch 2.11 stable (cu130) + CUDA 13.0 toolkit + vLLM from source
-# FlashInfer from source with PR #2913 (GDC for SM120)
+# FlashInfer from source (PR #2913 GDC merged upstream)
 #
 # Base: Ubuntu 24.04 + CUDA 13.0.1 + cuDNN
 # Stack: PyTorch 2.11 stable (cu130) -> Triton -> FlashInfer (source) ->
-#        vLLM (source, cherry-picks)
+#        vLLM (source, cherry-picks: #35675, #35936, #37132)
 #
 # Build:
 #   docker build --build-arg CACHEBUST=$(date +%s) \
@@ -102,15 +102,13 @@ RUN git clone https://github.com/vllm-project/vllm.git /build/vllm
 WORKDIR /build/vllm
 RUN git config user.email "build@docker" && git config user.name "build" && \
     git fetch origin \
-        pull/35675/head:pr-35675 \
         pull/35936/head:pr-35936 \
         pull/37132/head:pr-37132 && \
-    echo "=== PR #35675: Qwen3.5 NVFP4 MTP weight shape fix ===" && \
-    git cherry-pick --no-commit pr-35675 && \
+    echo "=== PR #35675: SKIP — NVFP4 MTP fix merged upstream (fc_quant workaround) ===" && \
     echo "=== PR #35936: tool_choice=required fix ===" && \
-    git cherry-pick --no-commit 5b3f5b3 b205c19 14e7aa5 ceb7a21 eed0ae7 && \
+    git cherry-pick --no-commit pr-35936 && \
     echo "=== PR #37132: spec decode prepare_inputs_event fix ===" && \
-    git cherry-pick --no-commit abed760265a8
+    git cherry-pick --no-commit pr-37132
 
 # -- Install vLLM Python deps (without torch) --------------------------------
 RUN grep -v '^torch==' requirements/build.txt > /tmp/build-notorch.txt && \
@@ -166,18 +164,11 @@ RUN uv pip install --upgrade setuptools pip && \
 WORKDIR /build
 RUN git clone --recursive https://github.com/flashinfer-ai/flashinfer.git && \
     cd flashinfer && \
-    git config user.email "build@docker" && git config user.name "build" && \
-    echo "=== FlashInfer PR #2913: GDC for SM90/SM100/SM120 ===" && \
-    git fetch origin pull/2913/head:pr-2913 && \
-    git merge --no-commit --no-ff pr-2913 || \
-    (git checkout --theirs csrc/nv_internal/tensorrt_llm/cutlass_extensions/include/cutlass_extensions/arch/grid_dependency_control.h && \
-     git add -A) && \
+    echo "=== FlashInfer from main (PR #2913 GDC merged upstream) ===" && \
     FLASHINFER_CUDA_ARCH_LIST="12.0a" \
     FLASHINFER_ENABLE_SM90=0 \
     MAX_JOBS=${MAX_JOBS} \
     pip install --no-build-isolation --no-deps .
-
-# NOTE: no flashinfer-cubin/jit-cache from pip — would override PR #2913 patched kernels
 ENV FLASHINFER_DISABLE_VERSION_CHECK=1
 RUN python -c "import flashinfer; print(f'FlashInfer: {getattr(flashinfer, \"__version__\", \"source-install\")}')"
 
@@ -191,13 +182,17 @@ WORKDIR /build/vllm
 # Don't let vLLM install its own torch
 RUN python use_existing_torch.py
 
-# Compile vLLM with latest CUTLASS headers
+# -- Move vLLM to /opt/vllm for editable install (preserves .git) ------------
+RUN mv /build/vllm /opt/vllm
+WORKDIR /opt/vllm
+
+# Compile vLLM editable with latest CUTLASS headers
 RUN --mount=type=cache,target=/root/.ccache \
     VLLM_TARGET_DEVICE=cuda \
     VLLM_CUTLASS_SRC_DIR=/build/cutlass \
     MAX_JOBS=${MAX_JOBS} \
     NVCC_THREADS=${NVCC_THREADS} \
-    pip install --no-build-isolation --no-deps . 2>&1
+    pip install --no-build-isolation --no-deps -e . 2>&1
 
 # Verify
 RUN python -c "import vllm; print(f'vLLM {vllm.__version__}')"
@@ -212,7 +207,7 @@ RUN CUTLASS_DSL=$(python -c 'import cutlass.utils.blockscaled_layout as m; print
 
 # -- Copy Triton MoE configs for vLLM ----------------------------------------
 COPY configs/ /tmp/triton-configs/
-RUN VLLM_CONFIGS_DIR="/opt/venv/lib/python3.12/site-packages/vllm/model_executor/layers/fused_moe/configs" && \
+RUN VLLM_CONFIGS_DIR="/opt/vllm/vllm/model_executor/layers/fused_moe/configs" && \
     for f in /tmp/triton-configs/*.json; do \
         base=$(basename "$f"); \
         cp "$f" "$VLLM_CONFIGS_DIR/$base"; \
@@ -269,11 +264,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ninja-build \
     pciutils \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 1
 
+COPY --from=vllm-build /opt/vllm /opt/vllm
 COPY --from=vllm-build /opt/venv /opt/venv
 
 ENV VIRTUAL_ENV=/opt/venv \
