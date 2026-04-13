@@ -258,9 +258,9 @@ RUN CUTLASS_DSL=$(python -c 'import cutlass.utils.blockscaled_layout as m; print
     cp /build/cutlass/python/CuTeDSL/cutlass/utils/blockscaled_layout.py "$CUTLASS_DSL" && \
     python -c 'from cutlass.utils.blockscaled_layout import sm120_make_smem_layout_sfa; print("OK: sm120_make_smem_layout_sfa available")'
 
-# b12x: TP-only NVFP4 MoE/GEMM backend (no-deps to avoid torch conflicts)
+# b12x: TP-only NVFP4 MoE/GEMM backend from source (no-deps to avoid torch conflicts)
 ARG CACHEBUST_B12X=0
-RUN uv pip install b12x --no-deps
+RUN pip install "b12x @ git+https://github.com/lukealonso/b12x.git" --no-deps
 
 
 # Copy Triton MoE configs for Blackwell GPUs
@@ -367,6 +367,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ninja-build \
     pciutils \
     curl \
+    git \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \

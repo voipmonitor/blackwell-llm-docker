@@ -21,7 +21,7 @@ SGLANG_ARGS="
   --host 0.0.0.0
   --port 5000
   --enable-pcie-oneshot-allreduce
-  --enable-pcie-oneshot-allreduce-fusion
+ 
   --enable-metrics
   --schedule-conservativeness 0.1
   --attention-backend flashinfer
