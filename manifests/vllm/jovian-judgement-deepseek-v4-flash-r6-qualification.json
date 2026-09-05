@@ -8,7 +8,7 @@
   "source_patches": [
     {
       "path": "sources/jj-ds4-r6-validation.patch",
-      "sha256": "57767d54e41a3d77ca22cb34ecbdbd6c9df755757fcab9ed0c72af5211657c35",
+      "sha256": "e694ed5c138b949ef56f7efd7e4e8ca0d3e80a994647c8937db84f9d484c0424",
       "title": "DeepSeek V4 text, vision, graph-warmup, padded-Q workspace, and engine-driven LMCache contracts"
     }
   ]

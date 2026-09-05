@@ -6,7 +6,7 @@
 # creating a CUDA context in the standalone cache server.
 services:
   ds4:
-    image: ${IMAGE:-voipmonitor/vllm:jovian-judgement-vllmf500b56-b12xaa76f04-fi803c466-cu133-torch213-20260905-r6}
+    image: ${IMAGE:-voipmonitor/vllm:jovian-judgement-vllma67b59a-b12xaa76f04-fi803c466-cu133-torch213-20260905-r6}
     container_name: ${NAME:-ds4-dspark-jovian-judgement-r6}
     entrypoint:
       - /usr/local/bin/lmcache-mp-wrapper.sh

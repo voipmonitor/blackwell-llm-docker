@@ -1372,6 +1372,108 @@ index 103c3e6bc605f5da5537bff288733e2ce31aee53..2ab77bb59b4ae7b94f4f02c85c346e2f
      "Dots3NoteForCausalLM": _HfExamplesInfo(
          "dots-studio/dots3-note-prev",
          is_available_online=False,
+diff --git a/tests/models/test_deepseek_v4_dspark_context_kv.py b/tests/models/test_deepseek_v4_dspark_context_kv.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..60d193c11a1597ebc59f25e5b18b08d81888e258
+--- /dev/null
++++ b/tests/models/test_deepseek_v4_dspark_context_kv.py
+@@ -0,0 +1,96 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++
++from importlib import import_module
++from types import SimpleNamespace
++
++import pytest
++import torch
++
++
++@pytest.mark.cpu_test
++@pytest.mark.parametrize(
++    "module_name",
++    [
++        "vllm.models.deepseek_v4.nvidia.dspark",
++        "vllm.models.deepseek_v4.amd.dspark",
++    ],
++)
++def test_fp8_context_kv_insert_uses_caller_owned_q_output(
++    monkeypatch: pytest.MonkeyPatch,
++    module_name: str,
++):
++    """DSpark context insertion must follow the fused operator's mutation contract."""
++    if ".amd." in module_name:
++        monkeypatch.setattr(
++            torch.cuda,
++            "get_device_properties",
++            lambda _device: SimpleNamespace(gcnArchName="gfx950"),
++        )
++    dspark = import_module(module_name)
++    num_tokens = 3
++    head_dim = 8
++    padded_heads = 4
++    block_size = 2
++    kv = torch.randn(num_tokens, head_dim, dtype=torch.bfloat16)
++    positions = torch.arange(num_tokens, dtype=torch.int64)
++    slot_mapping = torch.arange(num_tokens, dtype=torch.int64)
++    cache = torch.empty(2, block_size, 16, dtype=torch.uint8)
++    cos_sin_cache = torch.randn(16, 4, dtype=torch.bfloat16)
++    q_out = torch.empty(num_tokens, padded_heads, head_dim, dtype=torch.bfloat16)
++    scratch_inputs: list[torch.Tensor] = []
++
++    def get_q_padded_scratch(q: torch.Tensor) -> torch.Tensor:
++        scratch_inputs.append(q)
++        return q_out
++
++    attn = SimpleNamespace(
++        swa_cache_layer=SimpleNamespace(kv_cache=cache, block_size=block_size),
++        rotary_emb=SimpleNamespace(cos_sin_cache=cos_sin_cache),
++        n_local_heads=2,
++        padded_heads=padded_heads,
++        head_dim=head_dim,
++        eps=1e-6,
++        _get_q_padded_scratch=get_q_padded_scratch,
++    )
++    op_calls: list[tuple[object, ...]] = []
++
++    def fused_insert(*args: object) -> None:
++        op_calls.append(args)
++
++    monkeypatch.setattr(
++        torch.ops._C,
++        "fused_deepseek_v4_qnorm_rope_kv_rope_quant_insert",
++        fused_insert,
++        raising=False,
++    )
++
++    dspark._insert_context_kv(attn, kv, positions, slot_mapping)
++
++    assert len(scratch_inputs) == 1
++    dummy_q = scratch_inputs[0]
++    assert dummy_q.shape == (num_tokens, attn.n_local_heads, head_dim)
++    assert torch.count_nonzero(dummy_q) == 0
++    assert len(op_calls) == 1
++    (
++        actual_q,
++        actual_kv,
++        actual_q_out,
++        actual_cache,
++        actual_slots,
++        actual_positions,
++        actual_cos_sin,
++        actual_eps,
++        actual_block_size,
++    ) = op_calls[0]
++    assert actual_q is dummy_q
++    assert actual_kv is kv
++    assert actual_q_out is q_out
++    assert isinstance(actual_cache, torch.Tensor)
++    assert actual_cache.data_ptr() == cache.data_ptr()
++    assert actual_cache.shape == (cache.shape[0], cache[0].numel())
++    assert actual_slots is slot_mapping
++    assert actual_positions is positions
++    assert actual_cos_sin is cos_sin_cache
++    assert actual_eps == attn.eps
++    assert actual_block_size == block_size
 diff --git a/tests/models/test_deepseek_v4_vision.py b/tests/models/test_deepseek_v4_vision.py
 new file mode 100644
 index 0000000000000000000000000000000000000000..93401910e034ed68957122d8b06eb2efb2e575c3
@@ -2960,6 +3062,27 @@ index c7dd948f79f8c60c4d2ebbc7f754fd4e546bd5e4..d71bddae33280b670475911a1a76985a
      "DeepseekV4ForCausalLM",
 +    "DeepseekV4ForConditionalGeneration",
  ]
+diff --git a/vllm/models/deepseek_v4/amd/dspark.py b/vllm/models/deepseek_v4/amd/dspark.py
+index edca59032aa3e9cb7ee560d2bbceda6b3926590e..7125be06a6910a2cca3e349347150c7d5b6c4bc8 100644
+--- a/vllm/models/deepseek_v4/amd/dspark.py
++++ b/vllm/models/deepseek_v4/amd/dspark.py
+@@ -240,14 +240,15 @@ def _insert_context_kv(
+     if cache_dtype == torch.uint8:
+         # fp8_ds_mla UE8M0 paged layout (the gfx950 aiter SWA cache path).
+         swa_2d = swa_cache.view(swa_cache.shape[0], -1)
++        q_out = attn._get_q_padded_scratch(dummy_q)
+         torch.ops._C.fused_deepseek_v4_qnorm_rope_kv_rope_quant_insert(
+             dummy_q,
+             kv,
++            q_out,
+             swa_2d,
+             slot_mapping,
+             positions,
+             cos_sin_cache,
+-            attn.padded_heads,
+             attn.eps,
+             block_size,
+         )
 diff --git a/vllm/models/deepseek_v4/attention.py b/vllm/models/deepseek_v4/attention.py
 index 39d2c73b897c0e5d1f16df99bc2c09cf735fc86d..4860165f176111573da5cf3d74a4d21582d90768 100644
 --- a/vllm/models/deepseek_v4/attention.py
@@ -4223,6 +4346,27 @@ index 0000000000000000000000000000000000000000..a54c35e52c85c8113cc1c96273313c76
 +        hidden, _ = self.w1(x)
 +        out, _ = self.w2(F.gelu(hidden))
 +        return out
+diff --git a/vllm/models/deepseek_v4/nvidia/dspark.py b/vllm/models/deepseek_v4/nvidia/dspark.py
+index 82d4bba6e7496372e118749230c0264a00a33a0a..c5a8f486aea2f9ce50b430035b0726836185dadd 100644
+--- a/vllm/models/deepseek_v4/nvidia/dspark.py
++++ b/vllm/models/deepseek_v4/nvidia/dspark.py
+@@ -274,14 +274,15 @@ def _insert_context_kv(
+     if cache_dtype == torch.uint8:
+         # fp8_ds_mla UE8M0 paged layout
+         swa_2d = swa_cache.view(swa_cache.shape[0], -1)
++        q_out = attn._get_q_padded_scratch(dummy_q)
+         torch.ops._C.fused_deepseek_v4_qnorm_rope_kv_rope_quant_insert(
+             dummy_q,
+             kv,
++            q_out,
+             swa_2d,
+             slot_mapping,
+             positions,
+             cos_sin_cache,
+-            attn.padded_heads,
+             attn.eps,
+             block_size,
+         )
 diff --git a/vllm/models/deepseek_v4/nvidia/flashinfer_sparse.py b/vllm/models/deepseek_v4/nvidia/flashinfer_sparse.py
 index bca71abbadc35902629d26b51f4a0761d881df18..7874ca76474762187fd3554ef17587cd87141a10 100644
 --- a/vllm/models/deepseek_v4/nvidia/flashinfer_sparse.py

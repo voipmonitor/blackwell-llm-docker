@@ -7,20 +7,20 @@
   "composition": null,
   "composition_strategy": "cherry_pick",
   "manifest": {
-    "sha256": "54a4e3ff53b396fe2476695b7345e751f28e08cadea74f87b2f230ae3f57c90a"
+    "sha256": "4473cc8a8e17bea2f0200146181ce11211a61e5da299b324bb39029bf7fba9ee"
   },
   "name": "jovian-judgement-deepseek-v4-flash-vllm-r6-qualification",
   "pull_requests": [],
   "result": {
     "patch": "integration.patch",
-    "patch_sha256": "57767d54e41a3d77ca22cb34ecbdbd6c9df755757fcab9ed0c72af5211657c35",
-    "tree": "f500b567d8f191be39bb7bf6c72373c26e210380"
+    "patch_sha256": "55d5a04d70c18c314d95c821bc459c2ab47e03db9e1c16f26143e62cb8a46258",
+    "tree": "a67b59a4099457fbcdadce4476c88504fafaf083"
   },
   "schema_version": 1,
   "source_patches": [
     {
       "path": "sources/jj-ds4-r6-validation.patch",
-      "sha256": "57767d54e41a3d77ca22cb34ecbdbd6c9df755757fcab9ed0c72af5211657c35",
+      "sha256": "e694ed5c138b949ef56f7efd7e4e8ca0d3e80a994647c8937db84f9d484c0424",
       "title": "DeepSeek V4 text, vision, graph-warmup, padded-Q workspace, and engine-driven LMCache contracts"
     }
   ]

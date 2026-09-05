@@ -27,7 +27,7 @@ verify_lock() {
 
 verify_lock vllm \
   b7e3d033676d5db46fb7d6cdd40d760365a1e239 \
-  f500b567d8f191be39bb7bf6c72373c26e210380
+  a67b59a4099457fbcdadce4476c88504fafaf083
 verify_lock b12x \
   d27805aef99ae0ad092f79fc458aa1fae1a580e3 \
   aa76f044cbe43c191d33c0c9232e42193b16a544
@@ -37,13 +37,13 @@ verify_lock lmcache \
 
 output="$(PRINT_RELEASE_CONFIG=1 "${builder}")"
 grep -Fxq 'revision=r6' <<<"${output}"
-grep -Fxq 'vllm_tree=f500b567d8f191be39bb7bf6c72373c26e210380' \
+grep -Fxq 'vllm_tree=a67b59a4099457fbcdadce4476c88504fafaf083' \
   <<<"${output}"
 grep -Fxq 'b12x_tree=aa76f044cbe43c191d33c0c9232e42193b16a544' \
   <<<"${output}"
 grep -Fxq 'lmcache_tree=86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58' \
   <<<"${output}"
-grep -Fq 'jovian-judgement-vllmf500b56-b12xaa76f04-fi803c466-cu133-torch213-20260905-r6' \
+grep -Fq 'jovian-judgement-vllma67b59a-b12xaa76f04-fi803c466-cu133-torch213-20260905-r6' \
   <<<"${output}"
 
 config="$(docker compose -f "${compose}" config)"
@@ -58,7 +58,7 @@ grep -Fq 'LMCACHE_TRANSFER_MODE: engine_driven' <<<"${config}"
 grep -Fq 'LMCACHE_CHUNK_SIZE: "4096"' <<<"${config}"
 grep -Fq 'LMCACHE_SEPARATE_OBJECT_GROUPS: "1"' <<<"${config}"
 grep -Fq 'LOAD_FORMAT: fastsafetensors' <<<"${config}"
-grep -Fq 'jovian-judgement-vllmf500b56-b12xaa76f04-fi803c466' <<<"${config}"
+grep -Fq 'jovian-judgement-vllma67b59a-b12xaa76f04-fi803c466' <<<"${config}"
 
 grep -Fq 'ARG LMCACHE_BUILD_VERSION=0.5.2+jj.ds4.r6' \
   "${repo_root}/Dockerfile.deepseek-infernal-invocation-cu133-torch213"
