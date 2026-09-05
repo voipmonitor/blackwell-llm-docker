@@ -4,12 +4,51 @@
   "repository": "https://github.com/local-inference-lab/vllm.git",
   "base_ref": "refs/heads/dev/jovian-judgement",
   "composition_strategy": "cherry_pick",
-  "pull_requests": [],
-  "source_patches": [
+  "pull_requests": [
     {
-      "path": "sources/jj-ds4-r6-validation.patch",
-      "sha256": "e694ed5c138b949ef56f7efd7e4e8ca0d3e80a994647c8937db84f9d484c0424",
-      "title": "DeepSeek V4 text, vision, graph-warmup, padded-Q workspace, and engine-driven LMCache contracts"
+      "number": 628,
+      "head": "56e1bf7ccb5ea8d29e70b9ee4387cea433cf7b14",
+      "commits": [
+        "45b7659ca4c1bd7cc91fe49bd2270a4cf4ceace3",
+        "56e1bf7ccb5ea8d29e70b9ee4387cea433cf7b14"
+      ],
+      "title": "Register speculative CUDA graph row counts during B12X warmup"
+    },
+    {
+      "number": 630,
+      "head": "5b6fb80f5c868b62da2c01c3f52861b34c84d8ac",
+      "title": "Clear custom all-reduce selectors in NCCL mode"
+    },
+    {
+      "number": 634,
+      "head": "6a4840b55bd1379c78ce288d7d973e9a8d5f07c4",
+      "commits": [
+        "f252e5260b0f32358da8ab7cd9f3ed9a07962dfe",
+        "a03bff02f93a8382c28cd30b963dc8f0b8c617d6",
+        "0330b86645e90c9e48d4bccfc0c5334f3d1f4efc",
+        "a05dd65f9446dc9392afb03ae162e3a5907f06d3",
+        "e6cd713e7cd7196d6e7dd97cf18098c5d0a74c28",
+        "dc468c4555966f4b9213778553537fc21b089548",
+        "026f62ec33b5dfd00d1bb32391c17384560a2445",
+        "e08327f845341dbcb52c5df769c6dba8316b7cf3",
+        "6a4840b55bd1379c78ce288d7d973e9a8d5f07c4"
+      ],
+      "title": "Add DeepSeek V4 Vision and qualified LMCache profiles"
+    },
+    {
+      "number": 553,
+      "head": "c6b1530e895e5188b6f57109db1f609f5615ce19",
+      "commits": [
+        "b39d501b26cbc2acd449b00188ee6321aecc407e",
+        "c6b1530e895e5188b6f57109db1f609f5615ce19"
+      ],
+      "title": "Allow engine-driven LMCache with expandable segments"
+    },
+    {
+      "number": 671,
+      "head": "6efc1168a65b68b1ef2aa566d044d4ed2f3ef3df",
+      "title": "Preallocate DeepSeek V4 padded-query output"
     }
-  ]
+  ],
+  "source_patches": []
 }

@@ -7,18 +7,21 @@ compose="${repo_root}/examples/docker-compose-ds4-dspark-jovian-judgement-r6.yml
 composition_root="${repo_root}/patches/releases/jovian-judgement-ds4-r6-qualification"
 
 verify_lock() {
-  local component=$1 expected_base=$2 expected_tree=$3
+  local component=$1 expected_base=$2 expected_tree=$3 expected_prs=$4
   local lock="${composition_root}/${component}/integration.lock.json"
   local patch="${composition_root}/${component}/integration.patch"
 
-  jq -e --arg base "${expected_base}" --arg tree "${expected_tree}" '
+  jq -e \
+    --arg base "${expected_base}" \
+    --arg tree "${expected_tree}" \
+    --argjson expected_prs "${expected_prs}" '
     .schema_version == 1 and
     .composition_strategy == "cherry_pick" and
     .base.commit == $base and
     .result.tree == $tree and
-    (.pull_requests | length) == 0 and
-    (.source_patches | length) == 1 and
-    (.source_patches[0].sha256 | test("^[0-9a-f]{64}$")) and
+    ([.pull_requests[].number] == $expected_prs) and
+    all(.pull_requests[]; .head | test("^[0-9a-f]{40}$")) and
+    (.source_patches | length) == 0 and
     (.result.patch_sha256 | test("^[0-9a-f]{64}$"))
   ' "${lock}" >/dev/null
   echo "$(jq -er '.result.patch_sha256' "${lock}")  ${patch}" |
@@ -27,13 +30,16 @@ verify_lock() {
 
 verify_lock vllm \
   b7e3d033676d5db46fb7d6cdd40d760365a1e239 \
-  a67b59a4099457fbcdadce4476c88504fafaf083
+  a67b59a4099457fbcdadce4476c88504fafaf083 \
+  '[628,630,634,553,671]'
 verify_lock b12x \
   d27805aef99ae0ad092f79fc458aa1fae1a580e3 \
-  aa76f044cbe43c191d33c0c9232e42193b16a544
+  aa76f044cbe43c191d33c0c9232e42193b16a544 \
+  '[246,301,306]'
 verify_lock lmcache \
   7ed4675404a31f4ffafd98975899dc83832ba965 \
-  86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58
+  86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58 \
+  '[49,50,51,55,56]'
 
 output="$(PRINT_RELEASE_CONFIG=1 "${builder}")"
 grep -Fxq 'revision=r6' <<<"${output}"

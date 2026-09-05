@@ -1,5 +1,5 @@
 diff --git a/csrc/storage_backends/fs/connector.cpp b/csrc/storage_backends/fs/connector.cpp
-index 13ac31a4..ff7bd5be 100644
+index 13ac31a4c2856eb966ff74dff8510ae824293706..ff7bd5befc0fe83d8fd81a43bdd4a5cefcd1c458 100644
 --- a/csrc/storage_backends/fs/connector.cpp
 +++ b/csrc/storage_backends/fs/connector.cpp
 @@ -1,6 +1,7 @@
@@ -345,7 +345,7 @@ index 13ac31a4..ff7bd5be 100644
  
  }  // namespace connector
 diff --git a/csrc/storage_backends/fs/connector.h b/csrc/storage_backends/fs/connector.h
-index a8dafe3c..afe28f2e 100644
+index a8dafe3cff01af6134dda530a9e654ec6d1417cd..afe28f2e7d282007ef95ffdd2f19233c837c64e2 100644
 --- a/csrc/storage_backends/fs/connector.h
 +++ b/csrc/storage_backends/fs/connector.h
 @@ -7,6 +7,7 @@
@@ -399,7 +399,7 @@ index a8dafe3c..afe28f2e 100644
  
  }  // namespace connector
 diff --git a/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md b/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md
-index 7dc8e410..118cc2da 100644
+index 7dc8e41061453641a4d1feb4c5bee291cff4622e..118cc2daa8bfd8b3e2b16ec660d70f21f32ecb91 100644
 --- a/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md
 +++ b/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md
 @@ -4,6 +4,9 @@ This document describes the per-user quota mechanism for L2 adapters: how
@@ -413,7 +413,7 @@ index 7dc8e410..118cc2da 100644
  
  Currently, L2 eviction operates on **aggregate** storage usage. A single
 diff --git a/lmcache/v1/distributed/api.py b/lmcache/v1/distributed/api.py
-index b6128c6f..33168999 100644
+index b6128c6f7f2ae8bfba03ec62d56bdf75d99a26ca..331689996bdc68a091f58e47eaeb1671d607b1ab 100644
 --- a/lmcache/v1/distributed/api.py
 +++ b/lmcache/v1/distributed/api.py
 @@ -128,6 +128,8 @@ class ObjectKey:
@@ -426,7 +426,7 @@ index b6128c6f..33168999 100644
              raise ValueError(
                  f"object_group_id must be >= 0 (got {self.object_group_id})"
 diff --git a/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py b/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py
-index ae3bc092..4d98535e 100644
+index ae3bc092a851af8a5ccdef975e44f82eccca3aa9..4d98535e30b0326742cb2e80970b18b5fd8adcb7 100644
 --- a/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py
 +++ b/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py
 @@ -3,8 +3,9 @@
@@ -804,7 +804,7 @@ index ae3bc092..4d98535e 100644
                  try:
                      size = (await aiofiles.os.stat(file_path)).st_size
 diff --git a/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py b/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py
-index 4d09e5e1..a712689a 100644
+index 4d09e5e16021f1add50d3f14e8dd6d0a9f460c2f..a712689a274cb937f8bb3edfa7ef57357965310a 100644
 --- a/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py
 +++ b/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py
 @@ -10,8 +10,10 @@ Backed by the native C++ filesystem connector wrapped with
@@ -943,7 +943,7 @@ index 4d09e5e1..a712689a 100644
          logger.warning(
              "Ignored %d unrecognized or empty native FS .data files during "
 diff --git a/lmcache/v1/multiprocess/modules/engine_driven_transfer.py b/lmcache/v1/multiprocess/modules/engine_driven_transfer.py
-index b1f6ca7f..4e92b34f 100644
+index b1f6ca7f3c8fa0bb07937083a6fd992d2dab36d6..4e92b34f18e1f3c338f58b673562870c143cf82d 100644
 --- a/lmcache/v1/multiprocess/modules/engine_driven_transfer.py
 +++ b/lmcache/v1/multiprocess/modules/engine_driven_transfer.py
 @@ -160,6 +160,7 @@ class EngineDrivenTransferModule(InstanceLivenessTarget):
@@ -955,7 +955,7 @@ index b1f6ca7f..4e92b34f 100644
              "non_cuda_context_meta": non_cuda_context_meta,
          }
 diff --git a/lmcache/v1/multiprocess/server.py b/lmcache/v1/multiprocess/server.py
-index cf3e81d9..6e7d91a2 100644
+index cf3e81d941647f1a00754b65230e5beab9d0efcf..6e7d91a27703a80a17084c6f89e601bdc9fe1176 100644
 --- a/lmcache/v1/multiprocess/server.py
 +++ b/lmcache/v1/multiprocess/server.py
 @@ -19,10 +19,14 @@ from lmcache.usage_telemetry.l2_usage import InitializeL2ConnectorUsage
@@ -1037,7 +1037,7 @@ index cf3e81d9..6e7d91a2 100644
                          "Insufficient /dev/shm capacity: need %d bytes, have %d bytes. "
                          "Disabling SHM, falling back to pickle.",
 diff --git a/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py b/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py
-index 8237b1aa..1f4ef7ef 100644
+index 8237b1aa7b44b1822f9125d88019f6d8a1013efe..1f4ef7efd6b1830686bd3a81186112f5e856a8d7 100644
 --- a/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py
 +++ b/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py
 @@ -3,6 +3,7 @@
@@ -1133,7 +1133,7 @@ index 8237b1aa..1f4ef7ef 100644
                          if gather_done is not None:
                              self._inflight_gather_events.discard(gather_done)
 diff --git a/lmcache/v1/multiprocess/transfer_context/base.py b/lmcache/v1/multiprocess/transfer_context/base.py
-index bd359cb1..71feed3c 100644
+index bd359cb1e3a7b8220cfa2a63c6bcc1326a8d4ef2..71feed3cd7846c3a65e4bb80266b4f0edef82e2b 100644
 --- a/lmcache/v1/multiprocess/transfer_context/base.py
 +++ b/lmcache/v1/multiprocess/transfer_context/base.py
 @@ -45,6 +45,85 @@ if TYPE_CHECKING:
@@ -1375,7 +1375,7 @@ index bd359cb1..71feed3c 100644
 +        # chunks keep the fast path.
 +        torch_dev.synchronize()
 diff --git a/lmcache/v1/multiprocess/transfer_context/worker_transfer.py b/lmcache/v1/multiprocess/transfer_context/worker_transfer.py
-index 0f0830c4..4dfe17a0 100644
+index 0f0830c467ecf5ba0f3c57ad338e74dbd54ba77b..4dfe17a01c85c45cda318079c000678bea93bfd6 100644
 --- a/lmcache/v1/multiprocess/transfer_context/worker_transfer.py
 +++ b/lmcache/v1/multiprocess/transfer_context/worker_transfer.py
 @@ -30,8 +30,10 @@ from lmcache.v1.multiprocess.protocols.engine import RegisterEngineDrivenContext
@@ -1549,7 +1549,7 @@ index 0f0830c4..4dfe17a0 100644
          future.set_result(ok)
          return future
 diff --git a/tests/v1/distributed/test_fs_l2_adapter_keys.py b/tests/v1/distributed/test_fs_l2_adapter_keys.py
-index 9a83a2a5..989a2b94 100644
+index 9a83a2a550e1ed65378f6dac1106b983e1f76124..989a2b94802f8e10034bcf6ba2e4e9c02065019e 100644
 --- a/tests/v1/distributed/test_fs_l2_adapter_keys.py
 +++ b/tests/v1/distributed/test_fs_l2_adapter_keys.py
 @@ -14,8 +14,10 @@ import pytest
@@ -1608,7 +1608,7 @@ index 9a83a2a5..989a2b94 100644
          with pytest.raises(ValueError, match="object_group_id"):
 diff --git a/tests/v1/distributed/test_fs_l2_adapter_persistence.py b/tests/v1/distributed/test_fs_l2_adapter_persistence.py
 new file mode 100644
-index 00000000..9d2710ef
+index 0000000000000000000000000000000000000000..9d2710ef35bcd87df7a1789c311ed9eb3beb7e55
 --- /dev/null
 +++ b/tests/v1/distributed/test_fs_l2_adapter_persistence.py
 @@ -0,0 +1,394 @@
@@ -2007,7 +2007,7 @@ index 00000000..9d2710ef
 +    ):
 +        FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
 diff --git a/tests/v1/distributed/test_fs_native_startup_scan.py b/tests/v1/distributed/test_fs_native_startup_scan.py
-index e6bd34d9..4637bc53 100644
+index e6bd34d9d76113f223da0e7b0936306c858ff01b..4637bc530d47941fa6ab330358d7f9e2b7d2491e 100644
 --- a/tests/v1/distributed/test_fs_native_startup_scan.py
 +++ b/tests/v1/distributed/test_fs_native_startup_scan.py
 @@ -12,6 +12,7 @@ import pytest
@@ -2093,7 +2093,7 @@ index e6bd34d9..4637bc53 100644
      key = _key(10)
      canonical = _object_key_to_filename(key)
 diff --git a/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py b/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py
-index bb17682b..7ffd5bd8 100644
+index bb17682b1dcc447cb07138633704b1bd26197e99..7ffd5bd869f0b21659c158aa2bea05b76565a036 100644
 --- a/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py
 +++ b/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py
 @@ -1,7 +1,7 @@
@@ -2222,7 +2222,7 @@ index bb17682b..7ffd5bd8 100644
  ) -> None:
 diff --git a/tests/v1/multiprocess/test_engine_driven_async_copy_lifetime.py b/tests/v1/multiprocess/test_engine_driven_async_copy_lifetime.py
 new file mode 100644
-index 00000000..a873fee0
+index 0000000000000000000000000000000000000000..a873fee047bb794f74c5fa840146bc54e358dade
 --- /dev/null
 +++ b/tests/v1/multiprocess/test_engine_driven_async_copy_lifetime.py
 @@ -0,0 +1,122 @@
@@ -2349,7 +2349,7 @@ index 00000000..a873fee0
 +        f"serializes the buffers, got {order}"
 +    )
 diff --git a/tests/v1/multiprocess/test_engine_driven_transfer.py b/tests/v1/multiprocess/test_engine_driven_transfer.py
-index 2a05fc0f..0e877ed5 100644
+index 2a05fc0fc18888b217083a5effb64e4977cfe27a..0e877ed5c754048e0ead1f054ef59bdfaabc1f31 100644
 --- a/tests/v1/multiprocess/test_engine_driven_transfer.py
 +++ b/tests/v1/multiprocess/test_engine_driven_transfer.py
 @@ -1871,6 +1871,39 @@ def test_engine_context_shm_pool_info(
@@ -2394,7 +2394,7 @@ index 2a05fc0f..0e877ed5 100644
      server_module_factory: ServerModuleFactory,
 diff --git a/tests/v1/multiprocess/test_shm_capacity.py b/tests/v1/multiprocess/test_shm_capacity.py
 new file mode 100644
-index 00000000..b0d13471
+index 0000000000000000000000000000000000000000..b0d134715ab1b7aa99e2857c817d7302a57f05cf
 --- /dev/null
 +++ b/tests/v1/multiprocess/test_shm_capacity.py
 @@ -0,0 +1,119 @@
@@ -2518,7 +2518,7 @@ index 00000000..b0d13471
 +    assert server._available_configured_l1_shm_bytes(mem_cfg) is None
 +    assert calls == []
 diff --git a/tests/v1/storage_backend/test_fs_native_connector.py b/tests/v1/storage_backend/test_fs_native_connector.py
-index e9b8d10e..b3ede6c9 100644
+index e9b8d10ea132c69a1a02e8f875003cd0c28685eb..b3ede6c992c0d964b04a5848c48f9360c29124b6 100644
 --- a/tests/v1/storage_backend/test_fs_native_connector.py
 +++ b/tests/v1/storage_backend/test_fs_native_connector.py
 @@ -17,9 +17,11 @@ from lmcache.v1.distributed.config import EvictionConfig
