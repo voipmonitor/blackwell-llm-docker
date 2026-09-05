@@ -33,6 +33,11 @@ chmod +x "${tmp_root}/bin/lmcache"
 
 cat >"${tmp_root}/bin/curl" <<'SH'
 #!/usr/bin/env bash
+url="${!#}"
+if [[ "${url}" == */status ]]; then
+  printf '%s\n' "${LMCACHE_TEST_STATUS_JSON:-{\"engine_driven_shm_pool\":{\"shm_name\":\"lmcache_l1_pool_test\",\"pool_size\":1099511627776}}}"
+  exit 0
+fi
 if [[ "${LMCACHE_TEST_HTTP_READY:-0}" == 1 ]]; then
   exit 0
 fi
@@ -125,15 +130,20 @@ LMCACHE_LOG="${tmp_root}/auto-engine.log" \
 LMCACHE_TEST_SERVER_ARGS="${tmp_root}/auto-engine-server.args" \
 LMCACHE_TEST_SERVER_ENV="${tmp_root}/auto-engine-server.env" \
 LMCACHE_TEST_MODEL_ARGS="${tmp_root}/auto-engine-model.args" \
+LMCACHE_TEST_MODEL_ENV="${tmp_root}/auto-engine-model-allocator.env" \
 LMCACHE_TEST_MODEL_TRANSFER_MODE="${tmp_root}/auto-engine-model.env" \
 CUDA_VISIBLE_DEVICES=0,1 \
 bash "${lmcache_wrapper}" \
   "${tmp_root}/model-server" auto-engine-driven
 grep -Fq -- '--supported-transfer-mode engine_driven' \
   "${tmp_root}/auto-engine-server.args"
+grep -Fq -- '--no-l1-use-lazy' "${tmp_root}/auto-engine-server.args"
+grep -Fq -- '--shm-name lmcache-8000' \
+  "${tmp_root}/auto-engine-server.args"
 grep -Fq -- '"lmcache.mp.mp_transfer_mode":"engine_driven"' \
   "${tmp_root}/auto-engine-model.args"
 grep -Fxq 'engine_driven' "${tmp_root}/auto-engine-model.env"
+grep -Fxq '<unset>' "${tmp_root}/auto-engine-model-allocator.env"
 sed -n '1p' "${tmp_root}/auto-engine-server.env" | grep -Fxq ''
 
 # Engine-driven transfers keep the standalone server CPU-only. GPU visibility
@@ -153,13 +163,16 @@ LMCACHE_LOG="${tmp_root}/engine.log" \
 LMCACHE_TEST_SERVER_ARGS="${tmp_root}/engine-server.args" \
 LMCACHE_TEST_SERVER_ENV="${tmp_root}/engine-server.env" \
 LMCACHE_TEST_MODEL_ARGS="${tmp_root}/engine-model.args" \
+LMCACHE_TEST_MODEL_ENV="${tmp_root}/engine-model-allocator.env" \
 LMCACHE_TEST_MODEL_CUDA_ENV="${tmp_root}/engine-model-cuda.env" \
+PYTORCH_CUDA_ALLOC_CONF='max_split_size_mb:256,expandable_segments:True' \
 CUDA_VISIBLE_DEVICES=0,1 \
 bash "${lmcache_wrapper}" \
   "${tmp_root}/model-server" engine-driven
 grep -Fq -- '--supported-transfer-mode engine_driven' \
   "${tmp_root}/engine-server.args"
 grep -Fq -- "--shm-name ''" "${tmp_root}/engine-server.args"
+grep -Fq -- '--l1-use-lazy' "${tmp_root}/engine-server.args"
 grep -Fq -- '--separate-object-groups' "${tmp_root}/engine-server.args"
 grep -Fq -- '"lmcache.mp.mp_transfer_mode":"engine_driven"' \
   "${tmp_root}/engine-model.args"
@@ -176,6 +189,29 @@ grep -Fq -- '--worker-registration-grace-seconds 900' \
 sed -n '1p' "${tmp_root}/engine-server.env" | grep -Fxq ''
 sed -n '2p' "${tmp_root}/engine-server.env" | grep -Fxq 'LAZY'
 grep -Fxq '0,1' "${tmp_root}/engine-model-cuda.env"
+grep -Fxq 'max_split_size_mb:256,expandable_segments:True' \
+  "${tmp_root}/engine-model-allocator.env"
+
+# A requested direct SHM transport must fail closed if the server reports that
+# it fell back to pickle because the configured arena could not be created.
+if PATH="${tmp_root}/bin:${PATH}" \
+  LMCACHE_MODE=ram \
+  LMCACHE_TRANSFER_MODE=engine_driven \
+  LMCACHE_L1_GB=2 \
+  LMCACHE_TEST_STATUS_JSON='{"engine_driven_shm_pool":{"shm_name":"","pool_size":0}}' \
+  LMCACHE_LOG="${tmp_root}/missing-shm.log" \
+  LMCACHE_TEST_SERVER_ARGS="${tmp_root}/missing-shm-server.args" \
+  LMCACHE_TEST_MODEL_ARGS="${tmp_root}/missing-shm-model.args" \
+  bash "${lmcache_wrapper}" \
+    "${tmp_root}/model-server" missing-shm \
+    >"${tmp_root}/missing-shm-wrapper.log" 2>&1; then
+  echo 'LMCache helper accepted pickle after requesting engine-driven SHM' >&2
+  exit 1
+fi
+grep -Fq \
+  'LMCache replaced the requested engine-driven SHM transport with pickle' \
+  "${tmp_root}/missing-shm-wrapper.log"
+test ! -e "${tmp_root}/missing-shm-model.args"
 
 # HTTP health is the primary readiness contract; this test intentionally uses
 # a log string that cannot satisfy the fallback.
@@ -236,7 +272,7 @@ bash "${lmcache_wrapper}" \
 grep -Fxq 'max_split_size_mb:256,expandable_segments:False' \
   "${tmp_root}/allocator-model.env"
 grep -Fxq \
-  'LMCache requires PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False; overriding expandable_segments:True' \
+  'LMCache-driven transfers require PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False; overriding expandable_segments:True' \
   "${tmp_root}/allocator-wrapper.log"
 
 PATH="${tmp_root}/bin:${PATH}" \

@@ -149,16 +149,28 @@ def main() -> None:
     _verify_lmcache_atomic_publication()
 
     strategy = ParallelStrategy(
-        use_mla=True,
-        vllm_world_size=8,
-        vllm_worker_id=5,
-        tp_size=8,
+        mla_only=True,
+        vllm_world_size=2,
+        vllm_worker_id=1,
+        tp_size=2,
         pp_size=1,
         n_servers=1,
-        dcp_size=4,
+        dcp_size=1,
     )
-    assert (strategy.kv_world_size, strategy.kv_worker_id) == (4, 1)
-    assert (strategy.kv_tp_size, strategy.kv_readers_per_object) == (2, 2)
+    assert (strategy.kv_world_size, strategy.kv_worker_id) == (1, 0)
+    assert (strategy.kv_tp_size, strategy.num_kv_readers) == (2, 2)
+    assert not strategy.is_kv_writer
+
+    writer_strategy = ParallelStrategy(
+        mla_only=True,
+        vllm_world_size=2,
+        vllm_worker_id=0,
+        tp_size=2,
+        pp_size=1,
+        n_servers=1,
+        dcp_size=1,
+    )
+    assert writer_strategy.is_kv_writer
 
     for launcher in (
         "/usr/local/bin/serve-ds4-flash.sh",

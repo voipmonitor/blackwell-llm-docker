@@ -127,6 +127,21 @@ case "${lmcache_separate_object_groups}" in
     ;;
 esac
 
+lmcache_shm_name="${LMCACHE_SHM_NAME-}"
+lmcache_shm_name_is_explicit=0
+if [[ -v LMCACHE_SHM_NAME ]]; then
+  lmcache_shm_name_is_explicit=1
+elif [[ "${lmcache_transfer_mode}" == engine_driven ]]; then
+  # Host-network services cannot share a PORT. The port therefore gives each
+  # concurrently runnable cache sidecar a stable, collision-free SHM arena.
+  lmcache_shm_name="lmcache-${service_port}"
+fi
+if [[ -n "${lmcache_shm_name}" \
+  && ! "${lmcache_shm_name}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "ERROR: LMCACHE_SHM_NAME contains unsupported characters: ${lmcache_shm_name}" >&2
+  exit 2
+fi
+
 server_args=(
   server
   --host "${lmcache_host}"
@@ -149,11 +164,17 @@ server_args=(
   --worker-registration-grace-seconds "${lmcache_worker_registration_grace}"
 )
 
-# An explicitly empty shared-memory name selects bounded per-request transfer
-# buffers. This avoids mapping and pinning the entire L1 pool in every vLLM
-# worker when the engine-driven transfer path is used.
-if [[ -v LMCACHE_SHM_NAME ]]; then
-  server_args+=(--shm-name "${LMCACHE_SHM_NAME}")
+# Engine-driven SHM exposes stable direct views into the complete L1 arena, so
+# it requires a named, non-lazy pool. An explicitly empty name remains a
+# diagnostic switch for the bounded pickle transport.
+if [[ "${lmcache_transfer_mode}" == engine_driven \
+  && -n "${lmcache_shm_name}" ]]; then
+  server_args+=(--no-l1-use-lazy --shm-name "${lmcache_shm_name}")
+else
+  server_args+=(--l1-use-lazy)
+  if [[ "${lmcache_shm_name_is_explicit}" == 1 ]]; then
+    server_args+=(--shm-name "${lmcache_shm_name}")
+  fi
 fi
 if [[ "${lmcache_separate_object_groups}" == 1 ]]; then
   server_args+=(--separate-object-groups)
@@ -268,18 +289,20 @@ print(
 PY
 )"
 
-# LMCache registers KV storage by address. PyTorch expandable segments can
-# remap those virtual addresses, so vLLM intentionally rejects this pairing.
-# Keep any unrelated allocator settings while forcing the incompatible option
-# off before the downstream model helper applies its normal default.
-allocator_config="${PYTORCH_CUDA_ALLOC_CONF:-}"
-if [[ -z "${allocator_config}" ]]; then
-  allocator_config="expandable_segments:False"
-elif [[ "${allocator_config}" =~ (^|,)expandable_segments:True(,|$) ]]; then
-  allocator_config="${allocator_config//expandable_segments:True/expandable_segments:False}"
-  echo "LMCache requires PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False; overriding expandable_segments:True"
+# LMCache-driven transfers register KV storage by address, so expandable CUDA
+# allocator segments could invalidate the registered addresses. Engine-driven
+# transfers copy through vLLM-owned staging buffers and impose no stable-address
+# requirement on the model allocator.
+if [[ "${lmcache_transfer_mode}" != "engine_driven" ]]; then
+  allocator_config="${PYTORCH_CUDA_ALLOC_CONF:-}"
+  if [[ -z "${allocator_config}" ]]; then
+    allocator_config="expandable_segments:False"
+  elif [[ "${allocator_config}" =~ (^|,)expandable_segments:True(,|$) ]]; then
+    allocator_config="${allocator_config//expandable_segments:True/expandable_segments:False}"
+    echo "LMCache-driven transfers require PYTORCH_CUDA_ALLOC_CONF=expandable_segments:False; overriding expandable_segments:True"
+  fi
+  export PYTORCH_CUDA_ALLOC_CONF="${allocator_config}"
 fi
-export PYTORCH_CUDA_ALLOC_CONF="${allocator_config}"
 
 rm -f "${lmcache_log}"
 export LMCACHE_DISABLE_BANNER="${LMCACHE_DISABLE_BANNER:-1}"
@@ -343,9 +366,48 @@ if [[ "${ready}" != 1 ]]; then
   exit 1
 fi
 
-printf 'LMCache ready: mode=%s transfer=%s L1=%sGB chunk=%s L2=%s load_failure=%s heartbeat=%ss health=http://%s:%s/healthcheck metrics=http://%s:%s/metrics log=%s\n' \
-  "${mode}" "${lmcache_transfer_mode}" "${lmcache_l1_gb}" "${lmcache_chunk_size}" \
-  "${lmcache_l2_path}" "${lmcache_kv_load_failure_policy}" \
+if [[ "${lmcache_transfer_mode}" == engine_driven \
+  && -n "${lmcache_shm_name}" ]]; then
+  status_file="$(mktemp)"
+  if ! curl --fail --silent --show-error --max-time 5 \
+      "http://127.0.0.1:${lmcache_http_port}/status" >"${status_file}"; then
+    echo "ERROR: LMCache did not expose engine-driven transfer status" >&2
+    rm -f "${status_file}"
+    stop_children
+    wait "${lmcache_pid}" 2>/dev/null || true
+    exit 1
+  fi
+  if ! "${PYTHON_BIN:-python3}" - "${status_file}" "${lmcache_l1_gb}" <<'PY'
+import json
+import sys
+
+status_path, configured_gib = sys.argv[1:]
+with open(status_path, encoding="utf-8") as stream:
+    status = json.load(stream)
+pool = status.get("engine_driven_shm_pool") or {}
+name = pool.get("shm_name") or ""
+size = int(pool.get("pool_size") or 0)
+minimum = int(float(configured_gib) * 1024**3)
+if not name or size < minimum:
+    raise SystemExit(
+        "engine-driven SHM is unavailable: "
+        f"name={name!r}, pool_size={size}, required={minimum}"
+    )
+PY
+  then
+    echo "ERROR: LMCache replaced the requested engine-driven SHM transport with pickle" >&2
+    rm -f "${status_file}"
+    stop_children
+    wait "${lmcache_pid}" 2>/dev/null || true
+    exit 1
+  fi
+  rm -f "${status_file}"
+fi
+
+printf 'LMCache ready: mode=%s transfer=%s SHM=%s L1=%sGB chunk=%s L2=%s load_failure=%s heartbeat=%ss health=http://%s:%s/healthcheck metrics=http://%s:%s/metrics log=%s\n' \
+  "${mode}" "${lmcache_transfer_mode}" "${lmcache_shm_name:-disabled}" \
+  "${lmcache_l1_gb}" "${lmcache_chunk_size}" "${lmcache_l2_path}" \
+  "${lmcache_kv_load_failure_policy}" \
   "${lmcache_heartbeat_interval}" "${lmcache_host}" "${lmcache_http_port}" \
   "${lmcache_host}" "${lmcache_http_port}" "${lmcache_log}"
 

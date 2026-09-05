@@ -8,9 +8,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${repo_root}"
 
 release_name=${RELEASE_NAME:-jovian-judgement-deepseek-v4-flash-cu133-torch213}
-release_date=${RELEASE_DATE:-20260904}
-revision=${REVISION:-r5}
-composition_root=${COMPOSITION_ROOT:-patches/releases/jovian-judgement-ds4-r5}
+release_date=${RELEASE_DATE:-20260905}
+revision=${REVISION:-r6}
+composition_root=${COMPOSITION_ROOT:-patches/releases/jovian-judgement-ds4-r6-qualification}
 base_image=${BASE_IMAGE:-voipmonitor/vllm@sha256:03b67e53dda73c3fa317d4cb529ad38a220c51c7365ee8d54c16e5063fcc54e2}
 runtime_foundation=${RUNTIME_FOUNDATION:-1}
 runtime_foundation_image=${RUNTIME_FOUNDATION_IMAGE:-${base_image}}
@@ -65,7 +65,7 @@ test "${B12X_REF}" = master
 
 vllm_package_version=${VLLM_PACKAGE_VERSION:-0.26.1rc0+jovian.judgement.cu133.${revision}.vllm${VLLM_INTEGRATION_TREE:0:7}.b12x${B12X_INTEGRATION_TREE:0:7}}
 flashinfer_version=${FLASHINFER_VERSION:-0.6.18+cu133}
-lmcache_build_version=${LMCACHE_BUILD_VERSION:-0.5.2+glm52dcp.6}
+lmcache_build_version=${LMCACHE_BUILD_VERSION:-0.5.2+jj.ds4.r6}
 cache_fingerprint="cu133-torch213-vllm${VLLM_INTEGRATION_TREE:0:10}-b12x${B12X_INTEGRATION_TREE:0:10}-lmcache${LMCACHE_INTEGRATION_TREE:0:10}"
 image=${IMAGE:-voipmonitor/vllm:jovian-judgement-vllm${VLLM_INTEGRATION_TREE:0:7}-b12x${B12X_INTEGRATION_TREE:0:7}-fi${flashinfer_commit:0:7}-cu133-torch213-${release_date}-${revision}}
 
@@ -251,11 +251,12 @@ docker run --rm --entrypoint /opt/venv/bin/python "${image}" \
 launcher_output="$(
   docker run --rm --entrypoint /usr/local/bin/serve-ds4-flash.sh \
     -e DRY_RUN=1 -e MODE=dspark -e DSPARK_TOKENS=5 -e MAX_NUM_SEQS=16 \
-    -e TP_SIZE=2 -e GRAPH=auto -e LOAD_FORMAT=instanttensor "${image}" 2>&1
+    -e TP_SIZE=2 -e GRAPH=auto "${image}" 2>&1
 )"
 grep -Fq 'DS4 launch: variant=text mode=dspark depth=fixed' <<<"${launcher_output}"
 grep -Fq 'backend=b12x-a8' <<<"${launcher_output}"
 grep -Fq 'tp=2 dcp=1 max_seqs=16 graph=96' <<<"${launcher_output}"
+grep -Fq 'load_format=fastsafetensors' <<<"${launcher_output}"
 grep -Fq -- '--attention-backend B12X' <<<"${launcher_output}"
 printf '%s\n' "${launcher_output}"
 
@@ -264,11 +265,12 @@ vision_launcher_output="$(
     -e DRY_RUN=1 -e MODE=dspark -e DS4_MODEL_VARIANT=vision \
     -e MODEL=deepseek-ai/DeepSeek-V4-Flash-Vision-Exp \
     -e MAX_NUM_SEQS=4 -e MAX_NUM_BATCHED_TOKENS=4096 \
-    -e TP_SIZE=2 -e GRAPH=auto -e LOAD_FORMAT=instanttensor "${image}" 2>&1
+    -e TP_SIZE=2 -e GRAPH=auto "${image}" 2>&1
 )"
 grep -Fq 'DS4 launch: variant=vision mode=dspark depth=fixed' \
   <<<"${vision_launcher_output}"
 grep -Fq 'tp=2 dcp=1 max_seqs=4 graph=16' <<<"${vision_launcher_output}"
+grep -Fq 'load_format=fastsafetensors' <<<"${vision_launcher_output}"
 grep -Fq 'num_speculative_tokens\":3' <<<"${vision_launcher_output}"
 grep -Fq -- '--revision 6821d6ad3681a4b137b066b76094fa82ebd0a380' \
   <<<"${vision_launcher_output}"

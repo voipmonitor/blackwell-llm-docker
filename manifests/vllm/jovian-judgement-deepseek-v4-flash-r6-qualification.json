@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "name": "jovian-judgement-deepseek-v4-flash-vllm-r6-qualification",
+  "repository": "https://github.com/local-inference-lab/vllm.git",
+  "base_ref": "refs/heads/dev/jovian-judgement",
+  "composition_strategy": "cherry_pick",
+  "pull_requests": [],
+  "source_patches": [
+    {
+      "path": "sources/jj-ds4-r6-validation.patch",
+      "sha256": "57767d54e41a3d77ca22cb34ecbdbd6c9df755757fcab9ed0c72af5211657c35",
+      "title": "DeepSeek V4 text, vision, graph-warmup, padded-Q workspace, and engine-driven LMCache contracts"
+    }
+  ]
+}

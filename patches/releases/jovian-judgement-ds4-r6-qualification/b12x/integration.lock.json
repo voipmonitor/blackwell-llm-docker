@@ -1,0 +1,27 @@
+{
+  "base": {
+    "commit": "d27805aef99ae0ad092f79fc458aa1fae1a580e3",
+    "ref": "refs/heads/master",
+    "repository": "https://github.com/local-inference-lab/b12x.git"
+  },
+  "composition": null,
+  "composition_strategy": "cherry_pick",
+  "manifest": {
+    "sha256": "a8fdec24d9035e1e58fd023d48f9bb953b587f63a5ce0f49f1bd6539438183b9"
+  },
+  "name": "jovian-judgement-deepseek-v4-flash-b12x-r6-qualification",
+  "pull_requests": [],
+  "result": {
+    "patch": "integration.patch",
+    "patch_sha256": "74dd0390f2da98fc99999d22c0ee25778a57e8c7cabd24b9969cf11c1e9d6b4b",
+    "tree": "aa76f044cbe43c191d33c0c9232e42193b16a544"
+  },
+  "schema_version": 1,
+  "source_patches": [
+    {
+      "path": "sources/jj-ds4-r6-validation.patch",
+      "sha256": "74dd0390f2da98fc99999d22c0ee25778a57e8c7cabd24b9969cf11c1e9d6b4b",
+      "title": "Generation-safe TP2 transport and DeepSeek V4 dual-cache and vision kernels"
+    }
+  ]
+}

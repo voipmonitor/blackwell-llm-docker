@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "name": "jovian-judgement-deepseek-v4-flash-lmcache-r6-qualification",
+  "repository": "https://github.com/local-inference-lab/LMCache.git",
+  "base_ref": "refs/heads/dev",
+  "composition_strategy": "cherry_pick",
+  "pull_requests": [],
+  "source_patches": [
+    {
+      "path": "sources/jj-ds4-r6-validation.patch",
+      "sha256": "e350717b283a1aa3c70c6bb5f2535debf63d81102c29c4a2c65ade00d06a0869",
+      "title": "Engine-driven transfer reuse and status, bounded filesystem keys, restart cleanup, and asynchronous copy lifetime"
+    }
+  ]
+}
