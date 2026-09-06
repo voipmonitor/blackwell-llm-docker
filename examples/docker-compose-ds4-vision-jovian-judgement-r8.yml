@@ -7,7 +7,7 @@
 # on 96 GiB TP2 GPUs and keeps the standalone cache server CPU-only.
 services:
   ds4-vision:
-    image: ${IMAGE:-voipmonitor/vllm:jovian-judgement-vllm649e4ce-b12xe58515a-fi803c466-cu133-torch213-20260906-r8}
+    image: ${IMAGE:-voipmonitor/vllm:jovian-judgement-vllm1b8465c-b12xe58515a-fi803c466-cu133-torch213-20260906-r8}
     container_name: ${NAME:-ds4-vision-jovian-judgement-r8}
     entrypoint:
       - /usr/local/bin/lmcache-mp-wrapper.sh

@@ -2594,10 +2594,18 @@ index 019b8d1504ace3b08b888ffb84052efe01875023..f1a1cb16ce37eae862803ac6954ae886
      """Sleep mode routes KV allocations through CuMemAllocator's pool, which
      auto-disables expandable_segments (see #40812)."""
 diff --git a/tests/v1/worker/test_gpu_model_runner.py b/tests/v1/worker/test_gpu_model_runner.py
-index 28503fefc2410e6a2016f1f34ceaf36c920dffba..c2d0975b8a593575d6966ede12ef1ec2a14bbeca 100644
+index 28503fefc2410e6a2016f1f34ceaf36c920dffba..fe0ca17a329a13b0d4e06d4a9b20097e3dedaf5d 100644
 --- a/tests/v1/worker/test_gpu_model_runner.py
 +++ b/tests/v1/worker/test_gpu_model_runner.py
-@@ -1823,6 +1823,120 @@ def test_glm_dcp_attention_profile_skips_non_glm_and_dcp1():
+@@ -5,6 +5,7 @@ import gc
+ from contextlib import nullcontext
+ from types import SimpleNamespace
+ from unittest.mock import Mock
++from weakref import ref
+ 
+ import numpy as np
+ import pytest
+@@ -1823,6 +1824,132 @@ def test_glm_dcp_attention_profile_skips_non_glm_and_dcp1():
      runner._init_minimal_kv_cache_for_profiling.assert_not_called()
  
  
@@ -2684,17 +2692,29 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..c2d0975b8a593575d6966ede12ef1ec2
 +    runner._init_minimal_kv_cache_for_profiling.assert_not_called()
 +
 +
-+def test_profile_run_profiles_attention_before_releasing_encoder_cache(monkeypatch):
++def test_profile_run_releases_generic_outputs_before_deepseek_profile(monkeypatch):
 +    runner = GPUModelRunner.__new__(GPUModelRunner)
 +    runner.supports_mm_inputs = False
 +    runner.max_num_tokens = 4096
 +    runner.is_pooling_model = False
 +    events: list[object] = []
++    output_refs: list[ref] = []
 +
-+    runner._dummy_run = lambda *args, **kwargs: (
-+        events.append(("dummy-run", args, kwargs)) or (torch.empty(1), torch.empty(1))
-+    )
-+    runner._profile_deepseek_v4_attention = lambda: events.append("profile-attention")
++    class ProfileOutput:
++        pass
++
++    def dummy_run(*args, **kwargs):
++        events.append(("dummy-run", args, kwargs))
++        outputs = (ProfileOutput(), ProfileOutput())
++        output_refs.extend(ref(output) for output in outputs)
++        return outputs
++
++    def profile_attention():
++        assert all(output_ref() is None for output_ref in output_refs)
++        events.append("profile-attention")
++
++    runner._dummy_run = dummy_run
++    runner._profile_deepseek_v4_attention = profile_attention
 +    runner._sync_device = lambda: events.append("sync")
 +    runner.encoder_cache = SimpleNamespace(
 +        clear=lambda: events.append("clear-encoder-cache")
@@ -2709,8 +2729,8 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..c2d0975b8a593575d6966ede12ef1ec2
 +
 +    assert events == [
 +        ("dummy-run", (4096,), {"is_profile": True}),
-+        "profile-attention",
 +        "sync",
++        "profile-attention",
 +        "clear-encoder-cache",
 +    ]
 +
@@ -2719,10 +2739,18 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..c2d0975b8a593575d6966ede12ef1ec2
      """Verify init_fp8_kv_scales handles heterogeneous kv_caches entries.
  
 diff --git a/tests/v1/worker/test_gpu_model_runner_v2.py b/tests/v1/worker/test_gpu_model_runner_v2.py
-index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..08e7a24abf95d53bf36d5a16b0528ed54988bf28 100644
+index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..7133a2c1937c61127ef6a91cdb346e2674ded75d 100644
 --- a/tests/v1/worker/test_gpu_model_runner_v2.py
 +++ b/tests/v1/worker/test_gpu_model_runner_v2.py
-@@ -203,3 +203,123 @@ def test_glm_dcp_attention_profile_skips_irrelevant_configurations(
+@@ -2,6 +2,7 @@
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ 
+ from types import SimpleNamespace
++from weakref import ref
+ 
+ import pytest
+ import torch
+@@ -203,3 +204,135 @@ def test_glm_dcp_attention_profile_skips_irrelevant_configurations(
      runner.profile_glm_dcp_attention()
  
      assert not initialized
@@ -2820,17 +2848,29 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..08e7a24abf95d53bf36d5a16b0528ed5
 +    assert not initialized
 +
 +
-+def test_profile_run_profiles_attention_before_releasing_encoder_cache(monkeypatch):
++def test_profile_run_releases_generic_outputs_before_deepseek_profile(monkeypatch):
 +    runner = GPUModelRunner.__new__(GPUModelRunner)
 +    runner.supports_mm_inputs = False
 +    runner.max_num_tokens = 4096
 +    runner.is_last_pp_rank = False
 +    events: list[object] = []
++    output_refs: list[ref] = []
 +
-+    runner._dummy_run = lambda *args, **kwargs: (
-+        events.append(("dummy-run", args, kwargs)) or (None, None)
-+    )
-+    runner._profile_deepseek_v4_attention = lambda: events.append("profile-attention")
++    class ProfileOutput:
++        pass
++
++    def dummy_run(*args, **kwargs):
++        events.append(("dummy-run", args, kwargs))
++        outputs = (ProfileOutput(), ProfileOutput())
++        output_refs.extend(ref(output) for output in outputs)
++        return outputs
++
++    def profile_attention():
++        assert all(output_ref() is None for output_ref in output_refs)
++        events.append("profile-attention")
++
++    runner._dummy_run = dummy_run
++    runner._profile_deepseek_v4_attention = profile_attention
 +    runner.reset_encoder_cache = lambda: events.append("reset-encoder-cache")
 +    monkeypatch.setattr(torch.accelerator, "synchronize", lambda: events.append("sync"))
 +
@@ -2842,8 +2882,8 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..08e7a24abf95d53bf36d5a16b0528ed5
 +            (4096,),
 +            {"skip_attn": True, "is_profile": True},
 +        ),
-+        "profile-attention",
 +        "sync",
++        "profile-attention",
 +        "reset-encoder-cache",
 +    ]
 diff --git a/vllm/_custom_ops.py b/vllm/_custom_ops.py
@@ -5742,7 +5782,7 @@ index d3a248cff572e678383da6f09b1b2e60f1f35a68..4c848b766ac171b1f5f64f22986e3354
          """Destroy FULL graph executables while retaining captured resources."""
          for graph in self.graphs.values():
 diff --git a/vllm/v1/worker/gpu/model_runner.py b/vllm/v1/worker/gpu/model_runner.py
-index 08a828b1484f6269846e6527bf40c2c6478ee9bb..7b5c63c2bc40130c81aeb36b6750d6866cd65929 100644
+index 08a828b1484f6269846e6527bf40c2c6478ee9bb..8f45a0673ee2b40f115626fab0d83750ee421632 100644
 --- a/vllm/v1/worker/gpu/model_runner.py
 +++ b/vllm/v1/worker/gpu/model_runner.py
 @@ -859,8 +859,20 @@ class GPUModelRunner(LoRAModelRunnerMixin):
@@ -5766,13 +5806,16 @@ index 08a828b1484f6269846e6527bf40c2c6478ee9bb..7b5c63c2bc40130c81aeb36b6750d686
          if self.supports_mm_inputs and self.is_first_pp_rank:
              mm_config = self.model_config.multimodal_config
              if mm_config is not None and not mm_config.skip_mm_profiling:
-@@ -889,11 +901,42 @@ class GPUModelRunner(LoRAModelRunnerMixin):
+@@ -889,11 +901,45 @@ class GPUModelRunner(LoRAModelRunnerMixin):
              else:
                  self._dummy_pooler_run(hidden_states)
  
-+        self._profile_deepseek_v4_attention()
++        # The generic and DeepSeek-specific passes represent separate scheduler
++        # steps. Release the generic outputs so KV admission uses the larger
++        # transient peak instead of an unreachable sum of both passes.
          torch.accelerator.synchronize()
          del hidden_states, sample_hidden_states
++        self._profile_deepseek_v4_attention()
          self.reset_encoder_cache()
          gc.collect()
  
@@ -5810,7 +5853,7 @@ index 08a828b1484f6269846e6527bf40c2c6478ee9bb..7b5c63c2bc40130c81aeb36b6750d686
      def profile_glm_dcp_attention(self) -> None:
          """Measure the GLM DCP query-gather peak before KV cache sizing.
 diff --git a/vllm/v1/worker/gpu_model_runner.py b/vllm/v1/worker/gpu_model_runner.py
-index e80af9842dbe538ad7b738a175624360081eeb6e..c9f719ee992492749b0d729f81da3f833279f701 100644
+index e80af9842dbe538ad7b738a175624360081eeb6e..bb2d51c0b4c25f92f952a081f9f17aa889642b77 100644
 --- a/vllm/v1/worker/gpu_model_runner.py
 +++ b/vllm/v1/worker/gpu_model_runner.py
 @@ -2473,6 +2473,16 @@ class GPUModelRunner(
@@ -5874,13 +5917,16 @@ index e80af9842dbe538ad7b738a175624360081eeb6e..c9f719ee992492749b0d729f81da3f83
          # Profile with multimodal encoder & encoder cache.
          if self.supports_mm_inputs:
              mm_config = self.model_config.multimodal_config
-@@ -6640,11 +6677,46 @@ class GPUModelRunner(
+@@ -6640,11 +6677,49 @@ class GPUModelRunner(
                  output = self._dummy_sampler_run(last_hidden_states)
          else:
              output = None
-+        self._profile_deepseek_v4_attention()
++        # The generic and DeepSeek-specific passes represent separate scheduler
++        # steps. Release the generic outputs so KV admission uses the larger
++        # transient peak instead of an unreachable sum of both passes.
          self._sync_device()
          del hidden_states, output
++        self._profile_deepseek_v4_attention()
          self.encoder_cache.clear()
          gc.collect()
  
