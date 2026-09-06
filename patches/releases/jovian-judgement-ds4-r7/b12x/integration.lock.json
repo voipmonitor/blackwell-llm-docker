@@ -1,0 +1,61 @@
+{
+  "base": {
+    "commit": "d27805aef99ae0ad092f79fc458aa1fae1a580e3",
+    "ref": "refs/heads/master",
+    "repository": "https://github.com/local-inference-lab/b12x.git"
+  },
+  "composition": null,
+  "composition_strategy": "cherry_pick",
+  "manifest": {
+    "sha256": "c14d6f5c2caea31dbc35f24fbdc3bc6b0c141ececb0d1b3502c0bcd4b4aff8a4"
+  },
+  "name": "jovian-judgement-deepseek-v4-flash-b12x-r7",
+  "pull_requests": [
+    {
+      "commits": [
+        "bc8bf029b1ef3363d220b14e037c218ec03e85d9",
+        "e6bf8496e0077b8da230f0bccbda7ce6ad8a9323",
+        "f9b039b94c72779ea4d3b62864a930c882611e9e",
+        "b184292a1e0f5c3516f5971730fddea2944112a8",
+        "37d800547ca4666556b58a6b162f5cfa37c1037e",
+        "37dc7f8036f602adc1edac47464876d2a9c61d71",
+        "2a2baaf3979c1f47f8fd139aab5c6eeea35003e4",
+        "ea76030d6c2353d8cf35522b4eeedfa29e7aca67"
+      ],
+      "disposition": "cherry_picked",
+      "head": "ea76030d6c2353d8cf35522b4eeedfa29e7aca67",
+      "number": 246,
+      "ref": "refs/pull/246/head",
+      "title": "Make TP2 graph peer-push generation-safe"
+    },
+    {
+      "commits": [
+        "49e598f62816a0451077d6c3c117b583cc79ca29",
+        "91ada9ae69d6ae317bdb2208d24df58b40365af8",
+        "223f88c23601689057d07700bedc650eac521526"
+      ],
+      "disposition": "cherry_picked",
+      "head": "223f88c23601689057d07700bedc650eac521526",
+      "number": 301,
+      "ref": "refs/pull/301/head",
+      "title": "Support FP8 DeepSeek V4 dual-cache prefill"
+    },
+    {
+      "commits": [
+        "3f6896dcd3ad221fb2ecb4737384131305d7c0ef"
+      ],
+      "disposition": "cherry_picked",
+      "head": "3f6896dcd3ad221fb2ecb4737384131305d7c0ef",
+      "number": 306,
+      "ref": "refs/pull/306/head",
+      "title": "Support DeepSeek V4 Vision mHC RMS epsilon"
+    }
+  ],
+  "result": {
+    "patch": "integration.patch",
+    "patch_sha256": "74dd0390f2da98fc99999d22c0ee25778a57e8c7cabd24b9969cf11c1e9d6b4b",
+    "tree": "aa76f044cbe43c191d33c0c9232e42193b16a544"
+  },
+  "schema_version": 1,
+  "source_patches": []
+}

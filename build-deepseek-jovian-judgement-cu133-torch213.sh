@@ -8,9 +8,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${repo_root}"
 
 release_name=${RELEASE_NAME:-jovian-judgement-deepseek-v4-flash-cu133-torch213}
-release_date=${RELEASE_DATE:-20260905}
-revision=${REVISION:-r6}
-composition_root=${COMPOSITION_ROOT:-patches/releases/jovian-judgement-ds4-r6-qualification}
+release_date=${RELEASE_DATE:-20260906}
+revision=${REVISION:-r7}
+composition_root=${COMPOSITION_ROOT:-patches/releases/jovian-judgement-ds4-r7}
 base_image=${BASE_IMAGE:-voipmonitor/vllm@sha256:03b67e53dda73c3fa317d4cb529ad38a220c51c7365ee8d54c16e5063fcc54e2}
 runtime_foundation=${RUNTIME_FOUNDATION:-1}
 runtime_foundation_image=${RUNTIME_FOUNDATION_IMAGE:-${base_image}}

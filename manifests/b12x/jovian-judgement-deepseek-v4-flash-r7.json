@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "name": "jovian-judgement-deepseek-v4-flash-b12x-r7",
+  "repository": "https://github.com/local-inference-lab/b12x.git",
+  "base_ref": "refs/heads/master",
+  "composition_strategy": "cherry_pick",
+  "pull_requests": [
+    {
+      "number": 246,
+      "head": "ea76030d6c2353d8cf35522b4eeedfa29e7aca67",
+      "commits": [
+        "bc8bf029b1ef3363d220b14e037c218ec03e85d9",
+        "e6bf8496e0077b8da230f0bccbda7ce6ad8a9323",
+        "f9b039b94c72779ea4d3b62864a930c882611e9e",
+        "b184292a1e0f5c3516f5971730fddea2944112a8",
+        "37d800547ca4666556b58a6b162f5cfa37c1037e",
+        "37dc7f8036f602adc1edac47464876d2a9c61d71",
+        "2a2baaf3979c1f47f8fd139aab5c6eeea35003e4",
+        "ea76030d6c2353d8cf35522b4eeedfa29e7aca67"
+      ],
+      "title": "Make TP2 graph peer-push generation-safe"
+    },
+    {
+      "number": 301,
+      "head": "223f88c23601689057d07700bedc650eac521526",
+      "commits": [
+        "49e598f62816a0451077d6c3c117b583cc79ca29",
+        "91ada9ae69d6ae317bdb2208d24df58b40365af8",
+        "223f88c23601689057d07700bedc650eac521526"
+      ],
+      "title": "Support FP8 DeepSeek V4 dual-cache prefill"
+    },
+    {
+      "number": 306,
+      "head": "3f6896dcd3ad221fb2ecb4737384131305d7c0ef",
+      "title": "Support DeepSeek V4 Vision mHC RMS epsilon"
+    }
+  ],
+  "source_patches": []
+}
