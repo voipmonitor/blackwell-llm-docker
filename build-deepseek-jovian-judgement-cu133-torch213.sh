@@ -256,7 +256,8 @@ launcher_output="$(
 grep -Fq 'DS4 launch: variant=text mode=dspark depth=fixed' <<<"${launcher_output}"
 grep -Fq 'backend=b12x-a8' <<<"${launcher_output}"
 grep -Fq 'tp=2 dcp=1 max_seqs=16 graph=96' <<<"${launcher_output}"
-grep -Fq 'load_format=fastsafetensors' <<<"${launcher_output}"
+grep -Fq 'load_format=instanttensor instanttensor_backend=BUFFERED' \
+  <<<"${launcher_output}"
 grep -Fq -- '--attention-backend B12X' <<<"${launcher_output}"
 printf '%s\n' "${launcher_output}"
 
@@ -270,7 +271,8 @@ vision_launcher_output="$(
 grep -Fq 'DS4 launch: variant=vision mode=dspark depth=fixed' \
   <<<"${vision_launcher_output}"
 grep -Fq 'tp=2 dcp=1 max_seqs=4 graph=16' <<<"${vision_launcher_output}"
-grep -Fq 'load_format=fastsafetensors' <<<"${vision_launcher_output}"
+grep -Fq 'load_format=instanttensor instanttensor_backend=BUFFERED' \
+  <<<"${vision_launcher_output}"
 grep -Fq 'num_speculative_tokens\":3' <<<"${vision_launcher_output}"
 grep -Fq -- '--revision 6821d6ad3681a4b137b066b76094fa82ebd0a380' \
   <<<"${vision_launcher_output}"
