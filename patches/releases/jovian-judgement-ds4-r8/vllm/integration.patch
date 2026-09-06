@@ -2594,10 +2594,10 @@ index 019b8d1504ace3b08b888ffb84052efe01875023..f1a1cb16ce37eae862803ac6954ae886
      """Sleep mode routes KV allocations through CuMemAllocator's pool, which
      auto-disables expandable_segments (see #40812)."""
 diff --git a/tests/v1/worker/test_gpu_model_runner.py b/tests/v1/worker/test_gpu_model_runner.py
-index 28503fefc2410e6a2016f1f34ceaf36c920dffba..851c52d4d399e0c20f7e0a7e2794880dfc54755c 100644
+index 28503fefc2410e6a2016f1f34ceaf36c920dffba..c2d0975b8a593575d6966ede12ef1ec2a14bbeca 100644
 --- a/tests/v1/worker/test_gpu_model_runner.py
 +++ b/tests/v1/worker/test_gpu_model_runner.py
-@@ -1823,6 +1823,103 @@ def test_glm_dcp_attention_profile_skips_non_glm_and_dcp1():
+@@ -1823,6 +1823,120 @@ def test_glm_dcp_attention_profile_skips_non_glm_and_dcp1():
      runner._init_minimal_kv_cache_for_profiling.assert_not_called()
  
  
@@ -2605,10 +2605,14 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..851c52d4d399e0c20f7e0a7e2794880d
 +    "architecture",
 +    ["DeepseekV4ForCausalLM", "DeepseekV4ForConditionalGeneration"],
 +)
-+@pytest.mark.parametrize("dummy_run_fails", [False, True])
++@pytest.mark.parametrize(
++    ("init_fails", "dummy_run_fails"),
++    [(False, False), (False, True), (True, False)],
++)
 +def test_deepseek_v4_attention_profile_uses_reachable_prefill_and_cleans_up(
 +    monkeypatch: pytest.MonkeyPatch,
 +    architecture: str,
++    init_fails: bool,
 +    dummy_run_fails: bool,
 +):
 +    runner = GPUModelRunner.__new__(GPUModelRunner)
@@ -2617,7 +2621,12 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..851c52d4d399e0c20f7e0a7e2794880d
 +    runner.max_num_tokens = 4096
 +    events: list[object] = []
 +
-+    runner._init_minimal_kv_cache_for_profiling = lambda: events.append("init-kv")
++    def init_kv():
++        events.append("init-kv")
++        if init_fails:
++            raise RuntimeError("expected DeepSeek V4 KV initialization failure")
++
++    runner._init_minimal_kv_cache_for_profiling = init_kv
 +
 +    def dummy_run(*args, **kwargs):
 +        events.append(("dummy-run", args, kwargs))
@@ -2635,25 +2644,33 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..851c52d4d399e0c20f7e0a7e2794880d
 +        lambda _: nullcontext(),
 +    )
 +
-+    if dummy_run_fails:
++    if init_fails:
++        with pytest.raises(
++            RuntimeError, match="expected DeepSeek V4 KV initialization failure"
++        ):
++            runner._profile_deepseek_v4_attention()
++    elif dummy_run_fails:
 +        with pytest.raises(RuntimeError, match="expected DeepSeek V4 profile failure"):
 +            runner._profile_deepseek_v4_attention()
 +    else:
 +        runner._profile_deepseek_v4_attention()
 +
 +    assert events[0] == "init-kv"
-+    assert events[1] == (
-+        "dummy-run",
-+        (4096,),
-+        {
-+            "force_attention": True,
-+            "skip_eplb": True,
-+            "is_profile": True,
-+            "single_request_prefill": True,
-+        },
-+    )
++    if init_fails:
++        assert events == ["init-kv", "cleanup"]
++    else:
++        assert events[1] == (
++            "dummy-run",
++            (4096,),
++            {
++                "force_attention": True,
++                "skip_eplb": True,
++                "is_profile": True,
++                "single_request_prefill": True,
++            },
++        )
 +    assert events[-1] == "cleanup"
-+    if not dummy_run_fails:
++    if not init_fails and not dummy_run_fails:
 +        assert events[-2] == "sync"
 +
 +
@@ -2702,10 +2719,10 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..851c52d4d399e0c20f7e0a7e2794880d
      """Verify init_fp8_kv_scales handles heterogeneous kv_caches entries.
  
 diff --git a/tests/v1/worker/test_gpu_model_runner_v2.py b/tests/v1/worker/test_gpu_model_runner_v2.py
-index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..00a0ac55181028929477bd08d305b07da4c50967 100644
+index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..08e7a24abf95d53bf36d5a16b0528ed54988bf28 100644
 --- a/tests/v1/worker/test_gpu_model_runner_v2.py
 +++ b/tests/v1/worker/test_gpu_model_runner_v2.py
-@@ -203,3 +203,108 @@ def test_glm_dcp_attention_profile_skips_irrelevant_configurations(
+@@ -203,3 +203,123 @@ def test_glm_dcp_attention_profile_skips_irrelevant_configurations(
      runner.profile_glm_dcp_attention()
  
      assert not initialized
@@ -2715,10 +2732,14 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..00a0ac55181028929477bd08d305b07d
 +    "architecture",
 +    ["DeepseekV4ForCausalLM", "DeepseekV4ForConditionalGeneration"],
 +)
-+@pytest.mark.parametrize("dummy_run_fails", [False, True])
++@pytest.mark.parametrize(
++    ("init_fails", "dummy_run_fails"),
++    [(False, False), (False, True), (True, False)],
++)
 +def test_deepseek_v4_attention_profile_uses_reachable_prefill_and_cleans_up(
 +    monkeypatch: pytest.MonkeyPatch,
 +    architecture: str,
++    init_fails: bool,
 +    dummy_run_fails: bool,
 +):
 +    runner = GPUModelRunner.__new__(GPUModelRunner)
@@ -2726,10 +2747,13 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..00a0ac55181028929477bd08d305b07d
 +    runner.max_num_tokens = 4096
 +    events: list[object] = []
 +
++    def init_kv(_):
++        events.append("init-kv")
++        if init_fails:
++            raise RuntimeError("expected DeepSeek V4 KV initialization failure")
++
 +    monkeypatch.setattr(
-+        model_runner_module,
-+        "_init_minimal_kv_cache_for_profiling",
-+        lambda _: events.append("init-kv"),
++        model_runner_module, "_init_minimal_kv_cache_for_profiling", init_kv
 +    )
 +    monkeypatch.setattr(
 +        model_runner_module,
@@ -2746,25 +2770,33 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..00a0ac55181028929477bd08d305b07d
 +    runner._dummy_run = dummy_run
 +    monkeypatch.setattr(torch.accelerator, "synchronize", lambda: events.append("sync"))
 +
-+    if dummy_run_fails:
++    if init_fails:
++        with pytest.raises(
++            RuntimeError, match="expected DeepSeek V4 KV initialization failure"
++        ):
++            runner._profile_deepseek_v4_attention()
++    elif dummy_run_fails:
 +        with pytest.raises(RuntimeError, match="expected DeepSeek V4 profile failure"):
 +            runner._profile_deepseek_v4_attention()
 +    else:
 +        runner._profile_deepseek_v4_attention()
 +
 +    assert events[0] == "init-kv"
-+    assert events[1] == (
-+        "dummy-run",
-+        (4096,),
-+        {
-+            "skip_eplb": True,
-+            "is_profile": True,
-+            "single_request_prefill": True,
-+            "profile_all_kv_cache_groups": True,
-+        },
-+    )
++    if init_fails:
++        assert events == ["init-kv", "cleanup"]
++    else:
++        assert events[1] == (
++            "dummy-run",
++            (4096,),
++            {
++                "skip_eplb": True,
++                "is_profile": True,
++                "single_request_prefill": True,
++                "profile_all_kv_cache_groups": True,
++            },
++        )
 +    assert events[-1] == "cleanup"
-+    if not dummy_run_fails:
++    if not init_fails and not dummy_run_fails:
 +        assert events[-2] == "sync"
 +
 +
@@ -5710,7 +5742,7 @@ index d3a248cff572e678383da6f09b1b2e60f1f35a68..4c848b766ac171b1f5f64f22986e3354
          """Destroy FULL graph executables while retaining captured resources."""
          for graph in self.graphs.values():
 diff --git a/vllm/v1/worker/gpu/model_runner.py b/vllm/v1/worker/gpu/model_runner.py
-index 08a828b1484f6269846e6527bf40c2c6478ee9bb..e06979cdcecb804dfdbe2bd9edeb53f3bf58708c 100644
+index 08a828b1484f6269846e6527bf40c2c6478ee9bb..7b5c63c2bc40130c81aeb36b6750d6866cd65929 100644
 --- a/vllm/v1/worker/gpu/model_runner.py
 +++ b/vllm/v1/worker/gpu/model_runner.py
 @@ -859,8 +859,20 @@ class GPUModelRunner(LoRAModelRunnerMixin):
@@ -5761,8 +5793,8 @@ index 08a828b1484f6269846e6527bf40c2c6478ee9bb..e06979cdcecb804dfdbe2bd9edeb53f3
 +        }:
 +            return
 +
-+        _init_minimal_kv_cache_for_profiling(self)
 +        try:
++            _init_minimal_kv_cache_for_profiling(self)
 +            self._dummy_run(
 +                self.max_num_tokens,
 +                skip_eplb=True,
@@ -5778,7 +5810,7 @@ index 08a828b1484f6269846e6527bf40c2c6478ee9bb..e06979cdcecb804dfdbe2bd9edeb53f3
      def profile_glm_dcp_attention(self) -> None:
          """Measure the GLM DCP query-gather peak before KV cache sizing.
 diff --git a/vllm/v1/worker/gpu_model_runner.py b/vllm/v1/worker/gpu_model_runner.py
-index e80af9842dbe538ad7b738a175624360081eeb6e..af271de47a6623260e37dcacbd0977e1f327ce48 100644
+index e80af9842dbe538ad7b738a175624360081eeb6e..c9f719ee992492749b0d729f81da3f833279f701 100644
 --- a/vllm/v1/worker/gpu_model_runner.py
 +++ b/vllm/v1/worker/gpu_model_runner.py
 @@ -2473,6 +2473,16 @@ class GPUModelRunner(
@@ -5842,7 +5874,7 @@ index e80af9842dbe538ad7b738a175624360081eeb6e..af271de47a6623260e37dcacbd0977e1
          # Profile with multimodal encoder & encoder cache.
          if self.supports_mm_inputs:
              mm_config = self.model_config.multimodal_config
-@@ -6640,11 +6677,47 @@ class GPUModelRunner(
+@@ -6640,11 +6677,46 @@ class GPUModelRunner(
                  output = self._dummy_sampler_run(last_hidden_states)
          else:
              output = None
@@ -5870,11 +5902,10 @@ index e80af9842dbe538ad7b738a175624360081eeb6e..af271de47a6623260e37dcacbd0977e1
 +        }:
 +            return
 +
-+        with set_current_vllm_config(self.vllm_config):
-+            self._init_minimal_kv_cache_for_profiling()
-+
 +        model_output: tuple[torch.Tensor, torch.Tensor] | None = None
 +        try:
++            with set_current_vllm_config(self.vllm_config):
++                self._init_minimal_kv_cache_for_profiling()
 +            model_output = self._dummy_run(
 +                self.max_num_tokens,
 +                force_attention=True,
