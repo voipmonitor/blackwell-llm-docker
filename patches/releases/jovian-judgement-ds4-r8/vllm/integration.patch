@@ -2594,7 +2594,7 @@ index 019b8d1504ace3b08b888ffb84052efe01875023..f1a1cb16ce37eae862803ac6954ae886
      """Sleep mode routes KV allocations through CuMemAllocator's pool, which
      auto-disables expandable_segments (see #40812)."""
 diff --git a/tests/v1/worker/test_gpu_model_runner.py b/tests/v1/worker/test_gpu_model_runner.py
-index 28503fefc2410e6a2016f1f34ceaf36c920dffba..d6ef316e91af4d67399863839f842db7676a6f9c 100644
+index 28503fefc2410e6a2016f1f34ceaf36c920dffba..3c8b88ecc196af22c33f23efeee053681d64cd53 100644
 --- a/tests/v1/worker/test_gpu_model_runner.py
 +++ b/tests/v1/worker/test_gpu_model_runner.py
 @@ -5,6 +5,7 @@ import gc
@@ -2629,8 +2629,8 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..d6ef316e91af4d67399863839f842db7
 +    runner.max_num_tokens = 4096
 +    events: list[object] = []
 +
-+    def init_kv():
-+        events.append("init-kv")
++    def init_kv(*, num_blocks=None):
++        events.append(("init-kv", num_blocks))
 +        if init_fails:
 +            raise RuntimeError("expected DeepSeek V4 KV initialization failure")
 +
@@ -2663,9 +2663,9 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..d6ef316e91af4d67399863839f842db7
 +    else:
 +        runner._profile_deepseek_v4_attention()
 +
-+    assert events[0] == "init-kv"
++    assert events[0] == ("init-kv", 1)
 +    if init_fails:
-+        assert events == ["init-kv", "cleanup"]
++        assert events == [("init-kv", 1), "cleanup"]
 +    else:
 +        assert events[1] == (
 +            "dummy-run",
@@ -2740,7 +2740,7 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..d6ef316e91af4d67399863839f842db7
      """Verify init_fp8_kv_scales handles heterogeneous kv_caches entries.
  
 diff --git a/tests/v1/worker/test_gpu_model_runner_v2.py b/tests/v1/worker/test_gpu_model_runner_v2.py
-index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..28b0987c7ca77156e0f90aaa4571a8df9dbbead3 100644
+index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..e2ac7d99571fbae2c80ec1fd1de37f9cd206efc3 100644
 --- a/tests/v1/worker/test_gpu_model_runner_v2.py
 +++ b/tests/v1/worker/test_gpu_model_runner_v2.py
 @@ -2,6 +2,7 @@
@@ -2776,8 +2776,8 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..28b0987c7ca77156e0f90aaa4571a8df
 +    runner.max_num_tokens = 4096
 +    events: list[object] = []
 +
-+    def init_kv(_):
-+        events.append("init-kv")
++    def init_kv(_, *, num_blocks=None):
++        events.append(("init-kv", num_blocks))
 +        if init_fails:
 +            raise RuntimeError("expected DeepSeek V4 KV initialization failure")
 +
@@ -2810,9 +2810,9 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..28b0987c7ca77156e0f90aaa4571a8df
 +    else:
 +        runner._profile_deepseek_v4_attention()
 +
-+    assert events[0] == "init-kv"
++    assert events[0] == ("init-kv", 1)
 +    if init_fails:
-+        assert events == ["init-kv", "cleanup"]
++        assert events == [("init-kv", 1), "cleanup"]
 +    else:
 +        assert events[1] == (
 +            "dummy-run",
@@ -5759,7 +5759,7 @@ index 2fc5a0396cd8088b77335a0ba90d26972e83a27a..bf1d6f3253bd30c082a0170610a45bec
  
  
 diff --git a/vllm/v1/worker/gpu/cudagraph_utils.py b/vllm/v1/worker/gpu/cudagraph_utils.py
-index d3a248cff572e678383da6f09b1b2e60f1f35a68..4c848b766ac171b1f5f64f22986e33545b703516 100644
+index d3a248cff572e678383da6f09b1b2e60f1f35a68..4eed69d0e08a9039fc11b3278d899ab19e8325dd 100644
 --- a/vllm/v1/worker/gpu/cudagraph_utils.py
 +++ b/vllm/v1/worker/gpu/cudagraph_utils.py
 @@ -492,6 +492,20 @@ class CudaGraphManager:
@@ -5783,8 +5783,50 @@ index d3a248cff572e678383da6f09b1b2e60f1f35a68..4c848b766ac171b1f5f64f22986e3354
      def reset_graphs(self) -> None:
          """Destroy FULL graph executables while retaining captured resources."""
          for graph in self.graphs.values():
+@@ -1094,8 +1108,15 @@ def _extrapolate_full_graph_memory(
+     return estimate
+ 
+ 
+-def _init_minimal_kv_cache_for_profiling(runner: "GPUModelRunner") -> None:
+-    """Allocate the smallest KV cache that still lets every graph be captured."""
++def _init_minimal_kv_cache_for_profiling(
++    runner: "GPUModelRunner", *, num_blocks: int | None = None
++) -> None:
++    """Allocate the smallest KV cache required by a profiling workload.
++
++    Graph capture needs one block per padded sequence. A caller that executes
++    one eager request can request one block explicitly, avoiding temporary KV
++    storage that would otherwise be included in activation headroom.
++    """
+     from vllm.v1.core.kv_cache_utils import (
+         get_kv_cache_config_from_groups,
+         get_kv_cache_groups,
+@@ -1104,12 +1125,18 @@ def _init_minimal_kv_cache_for_profiling(runner: "GPUModelRunner") -> None:
+     kv_cache_spec = runner.get_kv_cache_spec()
+     kv_cache_groups = get_kv_cache_groups(runner.vllm_config, kv_cache_spec)
+     # At least one block per sequence is required to capture the graphs.
+-    min_blocks = (
+-        min(runner.max_num_reqs, runner.compilation_config.max_cudagraph_capture_size)
+-        or 1
+-    )
++    if num_blocks is None:
++        num_blocks = (
++            min(
++                runner.max_num_reqs,
++                runner.compilation_config.max_cudagraph_capture_size,
++            )
++            or 1
++        )
++    if num_blocks < 1:
++        raise ValueError("Profiling KV cache requires at least one block")
+     saved_override = runner.cache_config.num_gpu_blocks_override
+-    runner.cache_config.num_gpu_blocks_override = min_blocks
++    runner.cache_config.num_gpu_blocks_override = num_blocks
+     try:
+         minimal_config = get_kv_cache_config_from_groups(
+             runner.vllm_config, kv_cache_groups, available_memory=0
 diff --git a/vllm/v1/worker/gpu/model_runner.py b/vllm/v1/worker/gpu/model_runner.py
-index 08a828b1484f6269846e6527bf40c2c6478ee9bb..8f45a0673ee2b40f115626fab0d83750ee421632 100644
+index 08a828b1484f6269846e6527bf40c2c6478ee9bb..765cac0f32062a45399ce517fd07c8ea58fedad5 100644
 --- a/vllm/v1/worker/gpu/model_runner.py
 +++ b/vllm/v1/worker/gpu/model_runner.py
 @@ -859,8 +859,20 @@ class GPUModelRunner(LoRAModelRunnerMixin):
@@ -5839,7 +5881,7 @@ index 08a828b1484f6269846e6527bf40c2c6478ee9bb..8f45a0673ee2b40f115626fab0d83750
 +            return
 +
 +        try:
-+            _init_minimal_kv_cache_for_profiling(self)
++            _init_minimal_kv_cache_for_profiling(self, num_blocks=1)
 +            self._dummy_run(
 +                self.max_num_tokens,
 +                skip_eplb=True,
@@ -5855,7 +5897,7 @@ index 08a828b1484f6269846e6527bf40c2c6478ee9bb..8f45a0673ee2b40f115626fab0d83750
      def profile_glm_dcp_attention(self) -> None:
          """Measure the GLM DCP query-gather peak before KV cache sizing.
 diff --git a/vllm/v1/worker/gpu_model_runner.py b/vllm/v1/worker/gpu_model_runner.py
-index e80af9842dbe538ad7b738a175624360081eeb6e..1cfac56173fa00e57f23591098004d8c0d9a129e 100644
+index e80af9842dbe538ad7b738a175624360081eeb6e..0200eaaba476fb1367e9a03c852475322678e715 100644
 --- a/vllm/v1/worker/gpu_model_runner.py
 +++ b/vllm/v1/worker/gpu_model_runner.py
 @@ -2473,6 +2473,16 @@ class GPUModelRunner(
@@ -5954,7 +5996,7 @@ index e80af9842dbe538ad7b738a175624360081eeb6e..1cfac56173fa00e57f23591098004d8c
 +        model_output: tuple[torch.Tensor, torch.Tensor] | None = None
 +        try:
 +            with set_current_vllm_config(self.vllm_config):
-+                self._init_minimal_kv_cache_for_profiling()
++                self._init_minimal_kv_cache_for_profiling(num_blocks=1)
 +            model_output = self._dummy_run(
 +                self.max_num_tokens,
 +                force_attention=True,
@@ -5970,3 +6012,40 @@ index e80af9842dbe538ad7b738a175624360081eeb6e..1cfac56173fa00e57f23591098004d8c
      @torch.inference_mode()
      def profile_glm_dcp_attention(self) -> None:
          """Profile GLM split-cache DCP attention before KV cache sizing.
+@@ -6678,7 +6753,9 @@ class GPUModelRunner(
+             del model_output
+             self._cleanup_profiling_kv_cache()
+ 
+-    def _init_minimal_kv_cache_for_profiling(self) -> None:
++    def _init_minimal_kv_cache_for_profiling(
++        self, *, num_blocks: int | None = None
++    ) -> None:
+         from vllm.v1.core.kv_cache_utils import (
+             get_kv_cache_config_from_groups,
+             get_kv_cache_groups,
+@@ -6688,14 +6765,20 @@ class GPUModelRunner(
+         KVCacheSpecRegistry.check_kv_cache_spec_registry(kv_cache_spec)
+         kv_cache_groups = get_kv_cache_groups(self.vllm_config, kv_cache_spec)
+         # the minimum number of blocks required is 1 block *per sequence*
+-        min_blocks = (
+-            min(self.max_num_reqs, self.compilation_config.max_cudagraph_capture_size)
+-            or 1
+-        )
++        if num_blocks is None:
++            num_blocks = (
++                min(
++                    self.max_num_reqs,
++                    self.compilation_config.max_cudagraph_capture_size,
++                )
++                or 1
++            )
++        if num_blocks < 1:
++            raise ValueError("Profiling KV cache requires at least one block")
+ 
+         # Temporarily change num_gpu_blocks_override to allocate a minimal KV cache
+         saved_override = self.cache_config.num_gpu_blocks_override
+-        self.cache_config.num_gpu_blocks_override = min_blocks
++        self.cache_config.num_gpu_blocks_override = num_blocks
+         try:
+             minimal_config = get_kv_cache_config_from_groups(
+                 self.vllm_config, kv_cache_groups, available_memory=0
