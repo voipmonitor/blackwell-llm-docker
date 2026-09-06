@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "status": "qualified",
+  "purpose": "Qualification receipt for the InstantTensor default loader used by DeepSeek V4 text serving with fixed probabilistic DSpark K5",
+  "image": "voipmonitor/vllm:jovian-judgement-vllmc0f75cf-b12xaa76f04-fi803c466-cu133-torch213-20260906-r7",
+  "image_id": "sha256:e51c9b0af6364e0d369ddd09b976bafe9adcc21041c469053ad4be5e48f2b7cc",
+  "registry_digest": "sha256:8a34b0be7be5315256f07181c2e3f684a4f086337bbc0363a1066dcd06b666a4",
+  "image_size_bytes": 34640909635,
+  "validated_at": "2026-09-06T01:08:33Z",
+  "source_composition": {
+    "docker": {
+      "repository": "https://github.com/local-inference-lab/blackwell-llm-docker.git",
+      "commit_used_by_image": "95f8751c6fcdcb62adc8d71678d7ae479dadec6b",
+      "source_overlay": "absent"
+    },
+    "vllm": {
+      "repository": "https://github.com/local-inference-lab/vllm.git",
+      "base_ref": "dev/jovian-judgement",
+      "base_commit": "b7e3d033676d5db46fb7d6cdd40d760365a1e239",
+      "tree": "c0f75cf4ea4eb158522b58571c681bd914187e52",
+      "pull_requests": {
+        "628": "56e1bf7ccb5ea8d29e70b9ee4387cea433cf7b14",
+        "630": "5b6fb80f5c868b62da2c01c3f52861b34c84d8ac",
+        "634": "38078860a4a31fd39310b7777106af07557a314c",
+        "553": "c6b1530e895e5188b6f57109db1f609f5615ce19",
+        "671": "6efc1168a65b68b1ef2aa566d044d4ed2f3ef3df"
+      }
+    },
+    "b12x": {
+      "repository": "https://github.com/local-inference-lab/b12x.git",
+      "base_ref": "master",
+      "base_commit": "d27805aef99ae0ad092f79fc458aa1fae1a580e3",
+      "tree": "aa76f044cbe43c191d33c0c9232e42193b16a544",
+      "pull_requests": {
+        "246": "ea76030d6c2353d8cf35522b4eeedfa29e7aca67",
+        "301": "223f88c23601689057d07700bedc650eac521526",
+        "306": "3f6896dcd3ad221fb2ecb4737384131305d7c0ef"
+      }
+    },
+    "lmcache": {
+      "repository": "https://github.com/local-inference-lab/LMCache.git",
+      "base_ref": "dev",
+      "base_commit": "7ed4675404a31f4ffafd98975899dc83832ba965",
+      "tree": "86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58",
+      "pull_requests": {
+        "49": "0bdb4a3eec525b327a2968cb608e000a4fe6eb43",
+        "50": "94c5514a26e5eca22296995235f0e0df6b4f458d",
+        "51": "63919a2c6c310f9b34de7049b9b28b77fab13ca0",
+        "55": "55f50e084f158f11fe2f91014ded17e3bc94420c",
+        "56": "a726d4673d1f4b1219fd35e5183c9e38bd9ae119"
+      }
+    },
+    "flashinfer": "803c4664f4771ddc418f20a57f752469a237a825"
+  },
+  "runtime_packages": {
+    "vllm": "0.26.1rc0+jovian.judgement.cu133.r7.vllmc0f75cf.b12xaa76f04",
+    "b12x": "1.3.0",
+    "torch": "2.13.0",
+    "cuda": "13.3",
+    "nccl": "2.31.2",
+    "flashinfer": "0.6.18+cu133",
+    "lmcache": "0.5.2+jj.ds4.r6",
+    "xgrammar": "0.2.5",
+    "instanttensor": "0.1.9",
+    "load_format": "instanttensor",
+    "instanttensor_backend": "BUFFERED"
+  },
+  "text_profile": {
+    "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-0731@9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "hardware": "NVIDIA RTX PRO 6000 Blackwell GPUs 14 and 15 connected through one PCIe switch",
+    "parallelism": "TP2/DCP1",
+    "speculative_decoding": "fixed probabilistic DSpark K5",
+    "attention_backend": "B12X",
+    "moe_backend": "B12X W4A8",
+    "dense_backend": "DGLIN FP8",
+    "all_reduce": "B12X automatic policy",
+    "kv_cache": "FP8 compressed MLA",
+    "load_format": "InstantTensor 0.1.9",
+    "instanttensor_backend": "BUFFERED",
+    "cuda_graphs": "FULL_AND_PIECEWISE",
+    "max_cuda_graph_rows": 48,
+    "max_num_seqs": 8,
+    "max_num_batched_tokens": 4096,
+    "max_model_len": 1048576,
+    "gpu_memory_utilization": 0.975,
+    "lmcache_mode": "off"
+  },
+  "model_loading": {
+    "target_weight_bytes_reported": "155G",
+    "target_weight_load_seconds": 68.89,
+    "target_loader_throughput_gib_per_second_reported": 2.45,
+    "draft_weight_bytes_reported": "155G",
+    "draft_weight_load_seconds": 68.63,
+    "draft_loader_throughput_gib_per_second_reported": 2.48,
+    "total_model_load_seconds": 145.797217,
+    "model_memory_gib_per_rank": 80.67,
+    "result": "The target and DSpark draft loaded through InstantTensor with owned CUDA tensors and the BUFFERED backend."
+  },
+  "memory": {
+    "gpu_kv_cache_tokens": 1247312,
+    "gpu_kv_cache_gib_per_rank": 8.27,
+    "maximum_concurrency_at_1048576_tokens": 1.19
+  },
+  "cuda_graph_capture": {
+    "target_piecewise_shapes": 9,
+    "target_full_shapes": 7,
+    "dspark_full_shapes": 6,
+    "result": "All configured target and DSpark graph shapes captured and replayed without an eager decode fallback."
+  },
+  "api_smoke": {
+    "requested_output": "Model generation works.",
+    "output": "Model generation works.",
+    "service_healthy_after": true
+  },
+  "sustained_decode": {
+    "conditions": "One request, zero-token user context, 5-second warmup, 20-second measurement, fixed probabilistic DSpark K5, GPUs 14 and 15",
+    "output_tokens_per_second": 154.242569,
+    "engine_steps_per_second": 59.216343,
+    "mean_inclusive_acceptance_length": 2.60473,
+    "strict_draft_acceptance_rate": 0.320946,
+    "time_to_first_token_seconds": 0.222641,
+    "errors": 0
+  },
+  "inherited_qualification": {
+    "receipt": "validation/jovian-judgement-ds4-r6-engine-driven-lmcache.json",
+    "scope": "Engine-driven LMCache transfer and byte-exact 144k hybrid-KV restore",
+    "reason": "The r7 image retains the exact r6 B12X and LMCache integration trees; the loader selection does not execute in the KV transfer path."
+  },
+  "tests": {
+    "vllm_ds4_launcher": "passed",
+    "vllm_launcher_syntax": "passed",
+    "docker_ds4_r7_contract": "passed",
+    "docker_compose_release": "11 passed",
+    "docker_json_validation": "passed",
+    "docker_git_diff_check": "passed",
+    "explicit_fastsafetensors_override": "passed",
+    "spark_loader_default": "FastSafeTensors retained"
+  },
+  "limitations": [
+    "The live r7 qualification covers the DeepSeek-V4-Flash-0731 text checkpoint on two 96 GiB GPUs. DeepSeek V4 Vision source support is included but was not executed against this image identity.",
+    "The recorded loader throughput and decode throughput apply to GPUs 14 and 15 and their storage, PCIe, and host-NUMA path. They are runtime health gates, not comparative performance measurements against the r6 qualification on GPUs 0 and 1.",
+    "Engine-driven LMCache integrity is inherited from the r6 receipt because the B12X and LMCache integration trees are byte-identical. The 144k cold-and-restore test was not repeated against r7.",
+    "FastSafeTensors remains an explicit LOAD_FORMAT override for DeepSeek V4 text and Vision. The separate Spark launcher continues to select FastSafeTensors by default.",
+    "Native vLLM filesystem KV offload is outside this serving contract.",
+    "The source pull requests listed in this receipt are review dependencies; this qualification does not assert that they are merged."
+  ]
+}
