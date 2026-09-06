@@ -2594,7 +2594,7 @@ index 019b8d1504ace3b08b888ffb84052efe01875023..f1a1cb16ce37eae862803ac6954ae886
      """Sleep mode routes KV allocations through CuMemAllocator's pool, which
      auto-disables expandable_segments (see #40812)."""
 diff --git a/tests/v1/worker/test_gpu_model_runner.py b/tests/v1/worker/test_gpu_model_runner.py
-index 28503fefc2410e6a2016f1f34ceaf36c920dffba..fe0ca17a329a13b0d4e06d4a9b20097e3dedaf5d 100644
+index 28503fefc2410e6a2016f1f34ceaf36c920dffba..d6ef316e91af4d67399863839f842db7676a6f9c 100644
 --- a/tests/v1/worker/test_gpu_model_runner.py
 +++ b/tests/v1/worker/test_gpu_model_runner.py
 @@ -5,6 +5,7 @@ import gc
@@ -2605,7 +2605,7 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..fe0ca17a329a13b0d4e06d4a9b20097e
  
  import numpy as np
  import pytest
-@@ -1823,6 +1824,132 @@ def test_glm_dcp_attention_profile_skips_non_glm_and_dcp1():
+@@ -1823,6 +1824,133 @@ def test_glm_dcp_attention_profile_skips_non_glm_and_dcp1():
      runner._init_minimal_kv_cache_for_profiling.assert_not_called()
  
  
@@ -2697,6 +2697,7 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..fe0ca17a329a13b0d4e06d4a9b20097e
 +    runner.supports_mm_inputs = False
 +    runner.max_num_tokens = 4096
 +    runner.is_pooling_model = False
++    runner.compilation_config = SimpleNamespace(static_forward_context={})
 +    events: list[object] = []
 +    output_refs: list[ref] = []
 +
@@ -2739,7 +2740,7 @@ index 28503fefc2410e6a2016f1f34ceaf36c920dffba..fe0ca17a329a13b0d4e06d4a9b20097e
      """Verify init_fp8_kv_scales handles heterogeneous kv_caches entries.
  
 diff --git a/tests/v1/worker/test_gpu_model_runner_v2.py b/tests/v1/worker/test_gpu_model_runner_v2.py
-index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..7133a2c1937c61127ef6a91cdb346e2674ded75d 100644
+index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..28b0987c7ca77156e0f90aaa4571a8df9dbbead3 100644
 --- a/tests/v1/worker/test_gpu_model_runner_v2.py
 +++ b/tests/v1/worker/test_gpu_model_runner_v2.py
 @@ -2,6 +2,7 @@
@@ -2750,7 +2751,7 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..7133a2c1937c61127ef6a91cdb346e26
  
  import pytest
  import torch
-@@ -203,3 +204,135 @@ def test_glm_dcp_attention_profile_skips_irrelevant_configurations(
+@@ -203,3 +204,136 @@ def test_glm_dcp_attention_profile_skips_irrelevant_configurations(
      runner.profile_glm_dcp_attention()
  
      assert not initialized
@@ -2853,6 +2854,7 @@ index f7105e6a00bf5c8293afb2dd6e6e3fbc1b7cccc1..7133a2c1937c61127ef6a91cdb346e26
 +    runner.supports_mm_inputs = False
 +    runner.max_num_tokens = 4096
 +    runner.is_last_pp_rank = False
++    runner.compilation_config = SimpleNamespace(static_forward_context={})
 +    events: list[object] = []
 +    output_refs: list[ref] = []
 +
@@ -5853,7 +5855,7 @@ index 08a828b1484f6269846e6527bf40c2c6478ee9bb..8f45a0673ee2b40f115626fab0d83750
      def profile_glm_dcp_attention(self) -> None:
          """Measure the GLM DCP query-gather peak before KV cache sizing.
 diff --git a/vllm/v1/worker/gpu_model_runner.py b/vllm/v1/worker/gpu_model_runner.py
-index e80af9842dbe538ad7b738a175624360081eeb6e..bb2d51c0b4c25f92f952a081f9f17aa889642b77 100644
+index e80af9842dbe538ad7b738a175624360081eeb6e..1cfac56173fa00e57f23591098004d8c0d9a129e 100644
 --- a/vllm/v1/worker/gpu_model_runner.py
 +++ b/vllm/v1/worker/gpu_model_runner.py
 @@ -2473,6 +2473,16 @@ class GPUModelRunner(
@@ -5925,7 +5927,8 @@ index e80af9842dbe538ad7b738a175624360081eeb6e..bb2d51c0b4c25f92f952a081f9f17aa8
 +        # steps. Release the generic outputs so KV admission uses the larger
 +        # transient peak instead of an unreachable sum of both passes.
          self._sync_device()
-         del hidden_states, output
+-        del hidden_states, output
++        del hidden_states, last_hidden_states, output
 +        self._profile_deepseek_v4_attention()
          self.encoder_cache.clear()
          gc.collect()

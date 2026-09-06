@@ -7,7 +7,7 @@
   "composition": null,
   "composition_strategy": "cherry_pick",
   "manifest": {
-    "sha256": "eaa47a824638c6c927f3190107411f0b57b59e635104ce9046aa2a6f20db463e"
+    "sha256": "26016d193de2bdb9930bec8939e9bafdba8311bb44c52b4e164a09baf9b7b7cf"
   },
   "name": "jovian-judgement-deepseek-v4-flash-vllm-r8",
   "pull_requests": [
@@ -76,10 +76,11 @@
       "commits": [
         "e11d90bffdb7e653dfa5688dfd0dbbacee561660",
         "f4931dee9a9446362ab2a4344f6a5c4f68755522",
-        "0c7d2d575542205b568a8d8733768f0394987516"
+        "0c7d2d575542205b568a8d8733768f0394987516",
+        "9a50fafdb3ecb936ff9173fa681d8676434ace21"
       ],
       "disposition": "cherry_picked",
-      "head": "0c7d2d575542205b568a8d8733768f0394987516",
+      "head": "9a50fafdb3ecb936ff9173fa681d8676434ace21",
       "number": 679,
       "ref": "refs/pull/679/head",
       "title": "Account for DeepSeek V4 prefill peak in KV admission"
@@ -87,8 +88,8 @@
   ],
   "result": {
     "patch": "integration.patch",
-    "patch_sha256": "7f3933803d1948ee53a555336bcaa8798e2fa25cea212e5327474da6a061b05b",
-    "tree": "1b8465c3446ddd734bd4ebafcd2a2a882186a6ae"
+    "patch_sha256": "599f8f56365dd3df043aae652217676055c93d8d199fb3b49d99573879f3fc31",
+    "tree": "85deae46deb66b5ead6dda90337d868df981c89a"
   },
   "schema_version": 1,
   "source_patches": []

@@ -52,11 +52,12 @@
     },
     {
       "number": 679,
-      "head": "0c7d2d575542205b568a8d8733768f0394987516",
+      "head": "9a50fafdb3ecb936ff9173fa681d8676434ace21",
       "commits": [
         "e11d90bffdb7e653dfa5688dfd0dbbacee561660",
         "f4931dee9a9446362ab2a4344f6a5c4f68755522",
-        "0c7d2d575542205b568a8d8733768f0394987516"
+        "0c7d2d575542205b568a8d8733768f0394987516",
+        "9a50fafdb3ecb936ff9173fa681d8676434ace21"
       ],
       "title": "Account for DeepSeek V4 prefill peak in KV admission"
     }
