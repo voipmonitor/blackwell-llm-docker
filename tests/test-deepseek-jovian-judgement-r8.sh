@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 builder="${repo_root}/build-deepseek-jovian-judgement-cu133-torch213.sh"
 compose="${repo_root}/examples/docker-compose-ds4-dspark-jovian-judgement-r8.yml"
+vision_compose="${repo_root}/examples/docker-compose-ds4-vision-jovian-judgement-r8.yml"
 composition_root="${repo_root}/patches/releases/jovian-judgement-ds4-r8"
 
 verify_lock() {
@@ -66,6 +67,22 @@ grep -Fq 'LMCACHE_SEPARATE_OBJECT_GROUPS: "1"' <<<"${config}"
 grep -Fq 'LOAD_FORMAT: instanttensor' <<<"${config}"
 grep -Fq 'INSTANTTENSOR_BACKEND: BUFFERED' <<<"${config}"
 grep -Fq 'jovian-judgement-vllm649e4ce-b12xe58515a-fi803c466' <<<"${config}"
+
+vision_config="$(docker compose -f "${vision_compose}" config)"
+grep -Fq 'DS4_MODEL_VARIANT: vision' <<<"${vision_config}"
+grep -Fq 'MODEL: deepseek-ai/DeepSeek-V4-Flash-Vision-Exp' <<<"${vision_config}"
+grep -Fq 'MODEL_REVISION: 6821d6ad3681a4b137b066b76094fa82ebd0a380' \
+  <<<"${vision_config}"
+grep -Fq 'DSPARK_TOKENS: "3"' <<<"${vision_config}"
+grep -Fq 'MAX_NUM_SEQS: "4"' <<<"${vision_config}"
+grep -Fq 'MAX_NUM_BATCHED_TOKENS: "4096"' <<<"${vision_config}"
+grep -Fq 'GPU_MEMORY_UTILIZATION: ""' <<<"${vision_config}"
+grep -Fq 'LMCACHE_MODE: "off"' <<<"${vision_config}"
+grep -Fq 'LMCACHE_TRANSFER_MODE: engine_driven' <<<"${vision_config}"
+grep -Fq 'LOAD_FORMAT: instanttensor' <<<"${vision_config}"
+grep -Fq 'INSTANTTENSOR_BACKEND: BUFFERED' <<<"${vision_config}"
+grep -Fq 'jovian-judgement-vllm649e4ce-b12xe58515a-fi803c466' \
+  <<<"${vision_config}"
 
 grep -Fq 'ARG LMCACHE_BUILD_VERSION=0.5.2+jj.ds4.r6' \
   "${repo_root}/Dockerfile.deepseek-infernal-invocation-cu133-torch213"
