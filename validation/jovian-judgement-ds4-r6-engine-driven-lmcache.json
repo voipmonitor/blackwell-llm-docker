@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "status": "qualified",
+  "purpose": "Qualification receipt for DeepSeek V4 text serving with fixed probabilistic DSpark K5 and engine-driven LMCache transfer across all hybrid KV groups",
+  "image": "voipmonitor/vllm:jovian-judgement-vllma67b59a-b12xaa76f04-fi803c466-cu133-torch213-20260905-r6",
+  "image_id": "sha256:7e684820db5b51e0097c185e34cbc2320374c3b08dc8ededad93e5beee206086",
+  "registry_digest": "sha256:8222ac5d319c0f4dae04e6a2abd379745c6a2433b1c5c7b454c9fed076d84b08",
+  "image_size_bytes": 34639500367,
+  "validated_at": "2026-09-06T00:07:55Z",
+  "source_composition": {
+    "docker": {
+      "repository": "https://github.com/local-inference-lab/blackwell-llm-docker.git",
+      "commit_used_by_image": "ae44f25029014e417e2aa4dd8178f0340bf0a720",
+      "source_overlay": "absent"
+    },
+    "vllm": {
+      "repository": "https://github.com/local-inference-lab/vllm.git",
+      "base_ref": "dev/jovian-judgement",
+      "base_commit": "b7e3d033676d5db46fb7d6cdd40d760365a1e239",
+      "tree": "a67b59a4099457fbcdadce4476c88504fafaf083",
+      "pull_requests": {
+        "628": "56e1bf7ccb5ea8d29e70b9ee4387cea433cf7b14",
+        "630": "5b6fb80f5c868b62da2c01c3f52861b34c84d8ac",
+        "634": "6a4840b55bd1379c78ce288d7d973e9a8d5f07c4",
+        "553": "c6b1530e895e5188b6f57109db1f609f5615ce19",
+        "671": "6efc1168a65b68b1ef2aa566d044d4ed2f3ef3df"
+      }
+    },
+    "b12x": {
+      "repository": "https://github.com/local-inference-lab/b12x.git",
+      "base_ref": "master",
+      "base_commit": "d27805aef99ae0ad092f79fc458aa1fae1a580e3",
+      "tree": "aa76f044cbe43c191d33c0c9232e42193b16a544",
+      "pull_requests": {
+        "246": "ea76030d6c2353d8cf35522b4eeedfa29e7aca67",
+        "301": "223f88c23601689057d07700bedc650eac521526",
+        "306": "3f6896dcd3ad221fb2ecb4737384131305d7c0ef"
+      }
+    },
+    "lmcache": {
+      "repository": "https://github.com/local-inference-lab/LMCache.git",
+      "base_ref": "dev",
+      "base_commit": "7ed4675404a31f4ffafd98975899dc83832ba965",
+      "tree": "86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58",
+      "pull_requests": {
+        "49": "0bdb4a3eec525b327a2968cb608e000a4fe6eb43",
+        "50": "94c5514a26e5eca22296995235f0e0df6b4f458d",
+        "51": "63919a2c6c310f9b34de7049b9b28b77fab13ca0",
+        "55": "55f50e084f158f11fe2f91014ded17e3bc94420c",
+        "56": "a726d4673d1f4b1219fd35e5183c9e38bd9ae119"
+      }
+    },
+    "flashinfer": "803c4664f4771ddc418f20a57f752469a237a825"
+  },
+  "runtime_packages": {
+    "vllm": "0.26.1rc0+jovian.judgement.cu133.r6.vllma67b59a.b12xaa76f04",
+    "b12x": "1.3.0",
+    "torch": "2.13.0",
+    "cuda": "13.3",
+    "nccl": "2.31.2",
+    "flashinfer": "0.6.18+cu133",
+    "lmcache": "0.5.2+jj.ds4.r6",
+    "xgrammar": "0.2.5",
+    "load_format": "fastsafetensors"
+  },
+  "text_profile": {
+    "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-0731@9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+    "hardware": "Two NVIDIA RTX PRO 6000 Blackwell GPUs connected through one PCIe switch",
+    "parallelism": "TP2/DCP1",
+    "speculative_decoding": "fixed probabilistic DSpark K5",
+    "attention_backend": "B12X",
+    "moe_backend": "B12X W4A8",
+    "dense_backend": "DGLIN FP8",
+    "all_reduce": "B12X automatic policy",
+    "kv_cache": "FP8 compressed MLA",
+    "load_format": "FastSafeTensors",
+    "cuda_graphs": "FULL_AND_PIECEWISE",
+    "max_cuda_graph_rows": 48,
+    "max_num_seqs": 8,
+    "max_num_batched_tokens": 4096,
+    "max_model_len": 1048576,
+    "gpu_memory_utilization": 0.97,
+    "lmcache_mode": "ram",
+    "lmcache_transfer": "engine_driven",
+    "lmcache_transport": "shared memory",
+    "lmcache_l1_gib": 24,
+    "lmcache_chunk_tokens": 4096
+  },
+  "memory": {
+    "gpu_kv_cache_tokens": 1199317,
+    "gpu_kv_cache_gib_per_rank": 7.95,
+    "maximum_concurrency_at_1048576_tokens": 1.14,
+    "lmcache_shared_memory_object": "/dev/shm/lmcache_l1_pool_lmcache-8026",
+    "lmcache_shared_memory_gib": 24,
+    "standalone_lmcache_cuda_contexts": 0
+  },
+  "cuda_graph_capture": {
+    "target_piecewise_shapes": 9,
+    "target_full_shapes": 7,
+    "dspark_full_shapes": 6,
+    "result": "All configured target and DSpark graph shapes captured and replayed without an eager decode fallback."
+  },
+  "api_smoke": {
+    "output": "JJ-R6-OK",
+    "service_healthy_after": true
+  },
+  "engine_driven_lmcache_integrity": {
+    "prompt_tokens": 144028,
+    "cold_cached_prompt_tokens": 0,
+    "cold_elapsed_seconds": 12.15914,
+    "restored_prompt_tokens": 143360,
+    "restore_elapsed_seconds": 3.149173,
+    "gpu_prefix_cache_reset_before_restore": true,
+    "outputs_match": true,
+    "output_token": "\u90e8",
+    "tensor_parallel_ranks": 2,
+    "hybrid_object_groups_per_rank": 8,
+    "matching_source_and_destination_groups": 16,
+    "total_compared_groups": 16,
+    "result": "Every retained source chunk matched the restored destination bytes for all eight hybrid KV object groups on both tensor-parallel ranks."
+  },
+  "sustained_decode": {
+    "conditions": "One request, zero-token user context, 30-second measurement, fixed probabilistic DSpark K5",
+    "output_tokens_per_second": 201.080843,
+    "engine_steps_per_second": 72.571783,
+    "mean_inclusive_acceptance_length": 2.770785,
+    "strict_draft_acceptance_rate": 0.354157,
+    "time_to_first_token_seconds": 0.233681,
+    "errors": 0
+  },
+  "tests": {
+    "lmcache_focused": "189 passed",
+    "vllm_dspark_context": "2 passed",
+    "vllm_ruff_check": "passed",
+    "vllm_ruff_format": "passed",
+    "docker_ds4_r6_contract": "passed",
+    "docker_glm52_lmcache_helper": "passed",
+    "json_validation": "passed",
+    "git_diff_check": "passed"
+  },
+  "limitations": [
+    "The GPU memory envelope applies to 96 GiB GPUs with the recorded TP2 scheduler and CUDA graph configuration.",
+    "The qualified live runtime is the DeepSeek-V4-Flash-0731 text checkpoint. DeepSeek V4 Vision source support is included but was not rerun against this exact image identity.",
+    "Engine-driven shared-memory LMCache is opt-in. GPU KV storage remains the default when LMCACHE_MODE is off.",
+    "Native vLLM filesystem KV offload is outside this serving contract.",
+    "The source pull requests listed in this receipt are review dependencies; this qualification does not assert that they are merged."
+  ]
+}
