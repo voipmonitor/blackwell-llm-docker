@@ -1,11 +1,12 @@
 # DeepSeek-V4-Flash-0731 fixed probabilistic DSpark K5 serving profile.
 #
 # GPU KV storage is the default. Set LMCACHE_MODE=ram or LMCACHE_MODE=disk to
-# enable engine-driven LMCache transfer. The TP2 profile selects 0.970 GPU
-# memory utilization, preserving more than one million GPU KV tokens without
-# creating a CUDA context in the standalone cache server. Automatic KV
-# admission profiles the scheduler-reachable DeepSeek V4 attention peak before
-# assigning the remaining memory to cache storage.
+# enable engine-driven LMCache transfer. The standard TP2 GPU-KV profile uses
+# 0.975 GPU memory utilization. The qualified one-million-token engine-driven
+# LMCache profile uses 0.970 because its asynchronous transfer path has a
+# separately measured runtime-memory contract. Automatic KV admission profiles
+# the scheduler-reachable DeepSeek V4 attention peak before assigning the
+# remaining memory to cache storage.
 # InstantTensor uses owned CUDA tensors and the BUFFERED backend for DS4 model
 # loading. Set LOAD_FORMAT=fastsafetensors only for an explicit deployment
 # requirement; the Spark launcher selects that loader independently.
