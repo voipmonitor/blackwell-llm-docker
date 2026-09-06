@@ -1,0 +1,48 @@
+{
+  "configuration": {
+    "gpu_ids": [
+      0,
+      1
+    ],
+    "image_count": 0,
+    "image_size": 0,
+    "long_prefill_tokens": 0,
+    "prefill_tokens": 4096,
+    "vision": false
+  },
+  "memory_samples": 1,
+  "minimum_free_mib": [
+    1599,
+    1457
+  ],
+  "purpose": "DeepSeek V4 GPU KV admission qualification at the complete scheduler token quantum",
+  "results": [
+    {
+      "elapsed_seconds": 1.650107380002737,
+      "error": null,
+      "expected_prompt_tokens": 4096,
+      "name": "full-scheduler-quantum",
+      "prompt_token_contract_satisfied": true,
+      "status": 200,
+      "usage": {
+        "completion_tokens": 1,
+        "completion_tokens_details": null,
+        "prompt_tokens": 4096,
+        "prompt_tokens_details": {
+          "cached_tokens": 4095,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 4097
+      }
+    }
+  ],
+  "schema_version": 1,
+  "server": {
+    "base_url": "http://127.0.0.1:8014",
+    "model": "DeepSeek-V4-Flash-0731"
+  },
+  "service_health_error": null,
+  "service_healthy_after": true,
+  "status": "qualified"
+}

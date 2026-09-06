@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "status": "qualified",
+  "purpose": "Qualification receipt for scheduler-reachable GPU memory admission in DeepSeek V4 text and Vision serving",
+  "image": "voipmonitor/vllm:jovian-judgement-vllmd267ca7-b12xe58515a-fi803c466-cu133-torch213-20260906-r8",
+  "image_id": "sha256:7e533ec88bcd04979f05c737768f75de0fb16fa80391c1b5d104565092f85579",
+  "registry_digest": "sha256:7f4de2bb4faf58d9b05c508037de57415dc4e5b7d53a24588db0ed0bcb7f8968",
+  "image_size_bytes": 34642440427,
+  "validated_at": "2026-09-06T13:39:07Z",
+  "validator_host": "aiserver",
+  "gpu_ids": [
+    0,
+    1
+  ],
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "gpu_count": 2,
+    "gpu_memory_mib": 97291,
+    "power_limit_watts": 600,
+    "interconnect": "Both GPUs are downstream of the same PCIe switch"
+  },
+  "vllm_tree": "d267ca78d0d07e3993093b023844619af41a5e11",
+  "b12x_tree": "e58515a63b7b5d15bbc523258e1e338f49698ce3",
+  "lmcache_tree": "86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58",
+  "source_composition": {
+    "docker": {
+      "repository": "https://github.com/local-inference-lab/blackwell-llm-docker.git",
+      "commit_used_by_image": "f68d9412248e1c7ec38966a2475e9790cca409d6",
+      "source_overlay": "absent"
+    },
+    "vllm": {
+      "repository": "https://github.com/local-inference-lab/vllm.git",
+      "base_ref": "dev/jovian-judgement",
+      "base_commit": "7d66922a7bf0c9c7efe9a35a87df128f6b24e762",
+      "tree": "d267ca78d0d07e3993093b023844619af41a5e11",
+      "pull_requests": {
+        "628": "56e1bf7ccb5ea8d29e70b9ee4387cea433cf7b14",
+        "630": "5b6fb80f5c868b62da2c01c3f52861b34c84d8ac",
+        "634": "38078860a4a31fd39310b7777106af07557a314c",
+        "553": "c6b1530e895e5188b6f57109db1f609f5615ce19",
+        "671": "6efc1168a65b68b1ef2aa566d044d4ed2f3ef3df",
+        "679": "423a8653f27d680c0c7254ea8406cf75537d20d5"
+      }
+    },
+    "b12x": {
+      "repository": "https://github.com/local-inference-lab/b12x.git",
+      "base_ref": "master",
+      "base_commit": "a1bbd02781c7505754e7aa58a959c1a77891c690",
+      "tree": "e58515a63b7b5d15bbc523258e1e338f49698ce3",
+      "pull_requests": {
+        "246": "ea76030d6c2353d8cf35522b4eeedfa29e7aca67",
+        "301": "223f88c23601689057d07700bedc650eac521526"
+      }
+    },
+    "lmcache": {
+      "repository": "https://github.com/local-inference-lab/LMCache.git",
+      "base_ref": "dev",
+      "base_commit": "7ed4675404a31f4ffafd98975899dc83832ba965",
+      "tree": "86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58",
+      "pull_requests": {
+        "49": "0bdb4a3eec525b327a2968cb608e000a4fe6eb43",
+        "50": "94c5514a26e5eca22296995235f0e0df6b4f458d",
+        "51": "63919a2c6c310f9b34de7049b9b28b77fab13ca0",
+        "55": "55f50e084f158f11fe2f91014ded17e3bc94420c",
+        "56": "a726d4673d1f4b1219fd35e5183c9e38bd9ae119"
+      }
+    },
+    "flashinfer": "803c4664f4771ddc418f20a57f752469a237a825"
+  },
+  "runtime_packages": {
+    "vllm": "0.26.1rc0+jovian.judgement.cu133.r8.vllmd267ca7.b12xe58515a",
+    "b12x": "1.3.0",
+    "torch": "2.13.0",
+    "cuda": "13.3",
+    "nccl": "2.31.2",
+    "flashinfer": "0.6.18+cu133",
+    "lmcache": "0.5.2+jj.ds4.r6",
+    "xgrammar": "0.2.5",
+    "instanttensor": "0.1.9",
+    "load_format": "instanttensor",
+    "instanttensor_backend": "BUFFERED"
+  },
+  "memory_admission_contract": {
+    "behavior": "DeepSeek V4 profiles a one-request prefill containing max_num_batched_tokens, executes attention against one temporary block for every hybrid KV group, and preserves Vision encoder outputs while measuring the peak.",
+    "accounting": "Generic and DeepSeek-specific profiles represent mutually exclusive scheduler steps. Generic profile outputs are released before the architecture-specific profile, and all temporary KV and attention state is released before GPU KV allocation.",
+    "capacity_policy": "No fixed reserve is subtracted. CUDA peak-memory accounting reserves the measured scheduler-reachable transient and assigns the remaining requested memory envelope to GPU KV storage."
+  },
+  "profiles": {
+    "text": {
+      "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-0731@9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+      "parallelism": "TP2/DCP1",
+      "speculative_decoding": "fixed probabilistic DSpark K5",
+      "attention_backend": "B12X",
+      "routed_experts": "B12X W4A8",
+      "dense_projections": "DGLIN FP8",
+      "kv_cache": "FP8 compressed MLA",
+      "max_num_seqs": 8,
+      "max_num_batched_tokens": 4096,
+      "max_model_len": 1048576,
+      "max_cuda_graph_rows": 48,
+      "cuda_graph_mode": "FULL_AND_PIECEWISE",
+      "gpu_memory_utilization": 0.975
+    },
+    "vision": {
+      "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp@6821d6ad3681a4b137b066b76094fa82ebd0a380",
+      "parallelism": "TP2/DCP1",
+      "speculative_decoding": "fixed probabilistic DSpark K3",
+      "attention_backend": "B12X",
+      "routed_experts": "B12X W4A8",
+      "dense_projections": "DGLIN FP8",
+      "kv_cache": "FP8 compressed MLA",
+      "max_num_seqs": 4,
+      "max_num_batched_tokens": 4096,
+      "max_model_len": 1048576,
+      "max_cuda_graph_rows": 16,
+      "cuda_graph_mode": "FULL_AND_PIECEWISE",
+      "gpu_memory_utilization": 0.975
+    },
+    "engine_driven_lmcache": {
+      "checkpoint": "deepseek-ai/DeepSeek-V4-Flash-0731@9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+      "parallelism": "TP2/DCP1",
+      "speculative_decoding": "fixed probabilistic DSpark K5",
+      "host_cache": "24 GiB named shared-memory L1",
+      "transfer_mode": "engine_driven",
+      "gpu_memory_utilization": 0.97
+    }
+  },
+  "runtime_evidence": {
+    "text": {
+      "model_memory_gib_per_rank": 80.67,
+      "profiled_peak_activation_gib": 2.1,
+      "cuda_graph_memory_gib": 0.87,
+      "gpu_kv_cache_gib_per_rank": 7.86,
+      "gpu_kv_cache_tokens": 1185524,
+      "maximum_concurrency_at_1048576_tokens": 1.13,
+      "full_scheduler_quantum_tokens": 4096,
+      "full_scheduler_quantum_elapsed_seconds": 0.875918,
+      "long_prefill_tokens": 810000,
+      "long_prefill_elapsed_seconds": 127.901216,
+      "minimum_free_mib_by_rank": [
+        1043,
+        1023
+      ],
+      "service_healthy_after": true
+    },
+    "vision": {
+      "model_memory_gib_per_rank": 81.11,
+      "profiled_peak_activation_gib": 1.57,
+      "cuda_graph_memory_gib": 0.19,
+      "gpu_kv_cache_gib_per_rank": 8.0,
+      "gpu_kv_cache_tokens": 1206495,
+      "maximum_concurrency_at_1048576_tokens": 1.15,
+      "full_scheduler_quantum_tokens": 4096,
+      "full_scheduler_quantum_elapsed_seconds": 0.881335,
+      "overlapped_text_prefill_tokens": 810000,
+      "overlapped_text_prefill_elapsed_seconds": 139.544792,
+      "overlapped_image_count": 10,
+      "image_dimensions": "2048x2048",
+      "vision_prompt_tokens": 3572,
+      "vision_image_tokens": 3471,
+      "vision_elapsed_seconds": 139.965555,
+      "minimum_free_mib_by_rank": [
+        1329,
+        1329
+      ],
+      "service_healthy_after": true
+    },
+    "engine_driven_lmcache": {
+      "profiled_peak_activation_gib": 2.1,
+      "cuda_graph_memory_gib": 0.87,
+      "gpu_kv_cache_gib_per_rank": 7.39,
+      "gpu_kv_cache_tokens": 1113883,
+      "maximum_concurrency_at_1048576_tokens": 1.06,
+      "long_prefill_tokens": 810000,
+      "long_prefill_elapsed_seconds": 121.816707,
+      "minimum_free_mib_by_rank": [
+        1599,
+        1457
+      ],
+      "standalone_lmcache_cuda_contexts": 0,
+      "eviction_pressure_tokens": 404096,
+      "restored_prompt_tokens_reported_by_vllm": 4095,
+      "lookup_hit_tokens_reported_by_lmcache": 4096,
+      "service_healthy_after": true
+    }
+  },
+  "cuda_graph_capture": {
+    "text_target_piecewise_shapes": 9,
+    "text_target_full_shapes": 7,
+    "text_dspark_full_shapes": 6,
+    "vision_target_piecewise_shapes": 5,
+    "vision_target_full_shapes": 3,
+    "vision_dspark_full_shapes": 3,
+    "result": "Every configured target and DSpark graph shape captured and executed without an eager decode fallback."
+  },
+  "tests": {
+    "source_contracts": "pass",
+    "runtime_contracts": "pass",
+    "model_startup": "pass",
+    "correctness": "pass",
+    "decode": "pass",
+    "prefill": "pass",
+    "vllm_legacy_memory_profile": "8 passed, 47 deselected",
+    "vllm_modular_memory_profile": "15 passed",
+    "docker_release_contract": "pass",
+    "docker_composition_tests": "24 passed",
+    "engine_driven_lmcache_restore": "4095 usable prompt tokens restored after GPU-prefix eviction"
+  },
+  "artifacts": {
+    "validation/jovian-judgement-ds4-r8-text-memory.json": "8f78fc7ff8ccb441afdb512ad23cda2e28ccc3cae2e4df26edebdf83162fcf81",
+    "validation/jovian-judgement-ds4-r8-vision-memory.json": "a4e51214fea46bd278d0c7db4ee61b16d5d743cec3733900949bc4d63a04bde1",
+    "validation/jovian-judgement-ds4-r8-engine-driven-lmcache-memory.json": "ab87bf3c7e4345eba7c09508fab37e1259868cc8af29b07331e669d227d5791c",
+    "validation/jovian-judgement-ds4-r8-engine-driven-lmcache-eviction.json": "41e01b2af8361dbb26767829838f823ee15ee5694d0d863ae8143aa01c9af8ac",
+    "validation/jovian-judgement-ds4-r8-engine-driven-lmcache-restore.json": "fb39995c2a91e5ee9f7392a8b2ba8b4c631fc7db6f47469a5655d4b2eb906513",
+    "validation/jovian-judgement-ds4-r8-text.log": "591fd7ce5837ebc356b73e649ab29466f48c9a5d2843707452f138bc79436038",
+    "validation/jovian-judgement-ds4-r8-vision.log": "838fa6ae95ac2658bf4ff3517ce8bb418c60e5f5fc4e8d9b61c1ce151d022a62",
+    "validation/jovian-judgement-ds4-r8-engine-driven-lmcache.log": "cf83181ee203db023657df2b958159f43ba7f5defd0953419f9ae0a1a7f7b76f"
+  },
+  "limitations": [
+    "The qualified memory envelopes apply to two 96 GiB SM120 GPUs and the recorded TP2/DCP1 scheduler and graph configurations.",
+    "The test validates memory admission, graph execution, API correctness, long-prefill completion, and engine-driven cache reuse. It is not a comparative decode-throughput benchmark.",
+    "The Vision drafter accepts text inputs only; the target model consumes image embeddings and performs authoritative verification.",
+    "Engine-driven LMCache is optional. GPU KV storage remains active and LMCache supplies an additional host-memory reuse tier.",
+    "Native vLLM filesystem KV offload is unsupported by this serving contract.",
+    "Task-level model quality is outside this qualification receipt."
+  ]
+}
