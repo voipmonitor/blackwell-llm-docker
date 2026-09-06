@@ -1,0 +1,93 @@
+{
+  "base": {
+    "commit": "7d66922a7bf0c9c7efe9a35a87df128f6b24e762",
+    "ref": "refs/heads/dev/jovian-judgement",
+    "repository": "https://github.com/local-inference-lab/vllm.git"
+  },
+  "composition": null,
+  "composition_strategy": "cherry_pick",
+  "manifest": {
+    "sha256": "6b51b7cf4028ae0840c3a538a00ffb3c1022b160a8e1d30e7abf266ece79f3a3"
+  },
+  "name": "jovian-judgement-deepseek-v4-flash-vllm-r8",
+  "pull_requests": [
+    {
+      "commits": [
+        "45b7659ca4c1bd7cc91fe49bd2270a4cf4ceace3",
+        "56e1bf7ccb5ea8d29e70b9ee4387cea433cf7b14"
+      ],
+      "disposition": "cherry_picked",
+      "head": "56e1bf7ccb5ea8d29e70b9ee4387cea433cf7b14",
+      "number": 628,
+      "ref": "refs/pull/628/head",
+      "title": "Register speculative CUDA graph row counts during B12X warmup"
+    },
+    {
+      "commits": [
+        "5b6fb80f5c868b62da2c01c3f52861b34c84d8ac"
+      ],
+      "disposition": "cherry_picked",
+      "head": "5b6fb80f5c868b62da2c01c3f52861b34c84d8ac",
+      "number": 630,
+      "ref": "refs/pull/630/head",
+      "title": "Clear custom all-reduce selectors in NCCL mode"
+    },
+    {
+      "commits": [
+        "f252e5260b0f32358da8ab7cd9f3ed9a07962dfe",
+        "a03bff02f93a8382c28cd30b963dc8f0b8c617d6",
+        "0330b86645e90c9e48d4bccfc0c5334f3d1f4efc",
+        "a05dd65f9446dc9392afb03ae162e3a5907f06d3",
+        "e6cd713e7cd7196d6e7dd97cf18098c5d0a74c28",
+        "dc468c4555966f4b9213778553537fc21b089548",
+        "026f62ec33b5dfd00d1bb32391c17384560a2445",
+        "e08327f845341dbcb52c5df769c6dba8316b7cf3",
+        "6a4840b55bd1379c78ce288d7d973e9a8d5f07c4",
+        "38078860a4a31fd39310b7777106af07557a314c"
+      ],
+      "disposition": "cherry_picked",
+      "head": "38078860a4a31fd39310b7777106af07557a314c",
+      "number": 634,
+      "ref": "refs/pull/634/head",
+      "title": "Add DeepSeek V4 Vision and qualified LMCache profiles"
+    },
+    {
+      "commits": [
+        "b39d501b26cbc2acd449b00188ee6321aecc407e",
+        "c6b1530e895e5188b6f57109db1f609f5615ce19"
+      ],
+      "disposition": "cherry_picked",
+      "head": "c6b1530e895e5188b6f57109db1f609f5615ce19",
+      "number": 553,
+      "ref": "refs/pull/553/head",
+      "title": "Allow engine-driven LMCache with expandable segments"
+    },
+    {
+      "commits": [
+        "6efc1168a65b68b1ef2aa566d044d4ed2f3ef3df"
+      ],
+      "disposition": "cherry_picked",
+      "head": "6efc1168a65b68b1ef2aa566d044d4ed2f3ef3df",
+      "number": 671,
+      "ref": "refs/pull/671/head",
+      "title": "Preallocate DeepSeek V4 padded-query output"
+    },
+    {
+      "commits": [
+        "e11d90bffdb7e653dfa5688dfd0dbbacee561660"
+      ],
+      "disposition": "cherry_picked",
+      "head": "e11d90bffdb7e653dfa5688dfd0dbbacee561660",
+      "number": 679,
+      "ref": "refs/pull/679/head",
+      "title": "Account for DeepSeek V4 prefill peak in KV admission"
+    }
+  ],
+  "result": {
+    "patch": "integration.patch",
+    "patch_sha256": "64fb2347e6b7db531452515ccdabdd40d309e10547334ba3fc2f2ba7227cdb28",
+    "tree": "8baad5e80636122c540eb659b54a8e89911abb7b"
+  },
+  "schema_version": 1,
+  "source_patches": []
+}

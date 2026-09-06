@@ -1,0 +1,2702 @@
+diff --git a/csrc/storage_backends/fs/connector.cpp b/csrc/storage_backends/fs/connector.cpp
+index 13ac31a4c2856eb966ff74dff8510ae824293706..ff7bd5befc0fe83d8fd81a43bdd4a5cefcd1c458 100644
+--- a/csrc/storage_backends/fs/connector.cpp
++++ b/csrc/storage_backends/fs/connector.cpp
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: Apache-2.0
+ 
+ #include "connector.h"
++#include <algorithm>
+ #include <atomic>
+ #include <cerrno>
+ #include <cstdint>
+@@ -11,6 +12,54 @@
+ namespace {
+ std::atomic<uint64_t> next_temp_file_id{0};
+ 
++size_t query_path_limit(const std::filesystem::path& path, int selector,
++                        const char* limit_name) {
++  errno = 0;
++  const long limit = ::pathconf(path.c_str(), selector);
++  if (limit < 0) {
++    if (errno == 0) return 0;
++    throw std::runtime_error("FSConnector failed to query " +
++                             std::string(limit_name) + " for " + path.string() +
++                             ": " + strerror(errno));
++  }
++  return static_cast<size_t>(limit);
++}
++
++size_t minimum_finite_limit(size_t first, size_t second) {
++  if (first == 0) return second;
++  if (second == 0) return first;
++  return std::min(first, second);
++}
++
++bool path_is_representable(const std::filesystem::path& path, size_t name_max,
++                           size_t path_max) {
++  if (path_max > 0 && path.native().size() >= path_max) return false;
++  if (name_max == 0) return true;
++  for (const auto& component : path) {
++    if (component.native().size() > name_max) return false;
++  }
++  return true;
++}
++
++void require_representable_path(const std::filesystem::path& path,
++                                size_t name_max, size_t path_max) {
++  if (name_max > 0) {
++    for (const auto& component : path) {
++      if (component.native().size() > name_max) {
++        throw std::runtime_error("FSConnector path component uses " +
++                                 std::to_string(component.native().size()) +
++                                 " bytes, but NAME_MAX is " +
++                                 std::to_string(name_max));
++      }
++    }
++  }
++  if (path_max > 0 && path.native().size() >= path_max) {
++    throw std::runtime_error(
++        "FSConnector path uses " + std::to_string(path.native().size()) +
++        " bytes, but PATH_MAX is " + std::to_string(path_max));
++  }
++}
++
+ void remove_temp_file(const std::filesystem::path& tmp_path) {
+   std::error_code remove_ec;
+   std::filesystem::remove(tmp_path, remove_ec);
+@@ -75,6 +124,9 @@ std::string FSConnector::key_to_filename(const std::string& key) {
+ 
+   const std::string& model_name = parts[0];
+   const std::string& kv_rank_hex = parts[1];
++  if (kv_rank_hex.empty() || kv_rank_hex.front() == '-') {
++    throw std::runtime_error("FSConnector: kv_rank must be non-negative");
++  }
+ 
+   // Replace '/' with '-SEP-' for filesystem safety
+   std::string safe_model = replace_all(model_name, "/", PATH_SLASH_REPLACEMENT);
+@@ -94,6 +146,95 @@ std::string FSConnector::key_to_filename(const std::string& key) {
+   return result;
+ }
+ 
++std::string FSConnector::hex_encode(const std::string& value) {
++  static constexpr char HEX[] = "0123456789abcdef";
++  std::string encoded;
++  encoded.resize(value.size() * 2);
++  for (size_t index = 0; index < value.size(); ++index) {
++    const auto byte = static_cast<unsigned char>(value[index]);
++    encoded[2 * index] = HEX[byte >> 4];
++    encoded[2 * index + 1] = HEX[byte & 0x0f];
++  }
++  return encoded;
++}
++
++std::filesystem::path FSConnector::key_to_relative_path(
++    const std::string& key) {
++  const std::string legacy_filename = key_to_filename(key);
++  if (legacy_filename.size() <= LEGACY_FILENAME_MAX_BYTES) {
++    return legacy_filename;
++  }
++
++  std::vector<std::string> parts;
++  size_t start = 0;
++  for (size_t pos = 0; pos <= key.size(); ++pos) {
++    if (pos == key.size() || key[pos] == KEY_SEP) {
++      parts.emplace_back(key.substr(start, pos - start));
++      start = pos + 1;
++    }
++  }
++  if (parts.size() == 3) {
++    // Legacy keys have no object-group field from which to construct the
++    // reversible bounded layout. Filesystems with a larger NAME_MAX may still
++    // contain their flat objects, so preserve that exact compatibility path.
++    return legacy_filename;
++  }
++  if (parts.size() != 4 && parts.size() != 5) {
++    throw std::runtime_error(
++        "FSConnector: oversized keys require the current four- or five-field "
++        "ObjectKey encoding: " +
++        key);
++  }
++
++  const std::string model_hex = hex_encode(parts[0]);
++  const std::string salt_hex =
++      parts.size() == 5 ? hex_encode(parts[4]) : std::string();
++  const size_t model_count =
++      (model_hex.size() + ENCODED_COMPONENT_MAX_CHARS - 1) /
++      ENCODED_COMPONENT_MAX_CHARS;
++  const size_t salt_count =
++      (salt_hex.size() + ENCODED_COMPONENT_MAX_CHARS - 1) /
++      ENCODED_COMPONENT_MAX_CHARS;
++
++  std::filesystem::path relative_path = BOUNDED_PATH_VERSION;
++  relative_path /= "m" + std::to_string(model_count);
++  for (size_t offset = 0; offset < model_hex.size();
++       offset += ENCODED_COMPONENT_MAX_CHARS) {
++    relative_path /= model_hex.substr(offset, ENCODED_COMPONENT_MAX_CHARS);
++  }
++  relative_path /= "s" + std::to_string(salt_count);
++  for (size_t offset = 0; offset < salt_hex.size();
++       offset += ENCODED_COMPONENT_MAX_CHARS) {
++    relative_path /= salt_hex.substr(offset, ENCODED_COMPONENT_MAX_CHARS);
++  }
++
++  std::string leaf = "0x" + parts[1] + std::string(1, KEY_SEP) + parts[2] +
++                     std::string(1, KEY_SEP) + parts[3] + FILE_EXT;
++  if (leaf.size() <= LEGACY_FILENAME_MAX_BYTES) {
++    relative_path /= leaf;
++    return relative_path;
++  }
++
++  const std::string rank = "0x" + parts[1];
++  const std::array<std::pair<char, std::string>, 3> bounded_fields = {{
++      {'r', rank},
++      {'g', parts[2]},
++      {'h', parts[3]},
++  }};
++  for (const auto& [marker, value] : bounded_fields) {
++    const size_t component_count =
++        (value.size() + ENCODED_COMPONENT_MAX_CHARS - 1) /
++        ENCODED_COMPONENT_MAX_CHARS;
++    relative_path /= std::string(1, marker) + std::to_string(component_count);
++    for (size_t offset = 0; offset < value.size();
++         offset += ENCODED_COMPONENT_MAX_CHARS) {
++      relative_path /= value.substr(offset, ENCODED_COMPONENT_MAX_CHARS);
++    }
++  }
++  relative_path /= "object.data";
++  return relative_path;
++}
++
+ // ---------------------------------------------------------------
+ // read/write helpers
+ // ---------------------------------------------------------------
+@@ -162,7 +303,9 @@ FSConnector::FSConnector(std::string base_path, int num_workers,
+       relative_tmp_dir_(std::move(relative_tmp_dir)),
+       use_odirect_(use_odirect),
+       disk_block_size_(0),
+-      read_ahead_size_(read_ahead_size) {
++      read_ahead_size_(read_ahead_size),
++      name_max_(0),
++      path_max_(0) {
+   // Create base directory
+   std::filesystem::create_directories(base_path_);
+ 
+@@ -172,6 +315,20 @@ FSConnector::FSConnector(std::string base_path, int num_workers,
+     std::filesystem::create_directories(tmp_path);
+   }
+ 
++  name_max_ = query_path_limit(base_path_, _PC_NAME_MAX, "NAME_MAX");
++  path_max_ = query_path_limit(base_path_, _PC_PATH_MAX, "PATH_MAX");
++  if (!relative_tmp_dir_.empty()) {
++    const auto tmp_path = std::filesystem::path(base_path_) / relative_tmp_dir_;
++    name_max_ = minimum_finite_limit(
++        name_max_, query_path_limit(tmp_path, _PC_NAME_MAX, "NAME_MAX"));
++    path_max_ = minimum_finite_limit(
++        path_max_, query_path_limit(tmp_path, _PC_PATH_MAX, "PATH_MAX"));
++  }
++  if (name_max_ > 0 && name_max_ < LEGACY_FILENAME_MAX_BYTES) {
++    throw std::runtime_error(
++        "FSConnector requires a filesystem NAME_MAX of at least 255 bytes");
++  }
++
+   // Query disk block size for O_DIRECT
+   if (use_odirect_) {
+     struct statvfs st;
+@@ -194,13 +351,34 @@ WorkerFSConn FSConnector::create_connection() {
+   conn.use_odirect = use_odirect_;
+   conn.disk_block_size = disk_block_size_;
+   conn.read_ahead_size = read_ahead_size_;
++  conn.name_max = name_max_;
++  conn.path_max = path_max_;
+   return conn;
+ }
+ 
+ void FSConnector::do_single_get(WorkerFSConn& conn, const std::string& key,
+                                 void* buf, size_t len, size_t chunk_size) {
+-  std::string filename = key_to_filename(key);
+-  auto file_path = conn.base_path / filename;
++  const auto relative_path = key_to_relative_path(key);
++  const auto canonical_path = conn.base_path / relative_path;
++  auto file_path = canonical_path;
++  bool found = false;
++  if (path_is_representable(canonical_path, conn.name_max, conn.path_max)) {
++    std::error_code exists_ec;
++    found = std::filesystem::exists(canonical_path, exists_ec);
++  }
++  if (!found && relative_path.has_parent_path()) {
++    const auto legacy_path = conn.base_path / key_to_filename(key);
++    if (path_is_representable(legacy_path, conn.name_max, conn.path_max)) {
++      std::error_code exists_ec;
++      if (std::filesystem::exists(legacy_path, exists_ec)) {
++        file_path = legacy_path;
++        found = true;
++      }
++    }
++  }
++  if (!found) {
++    require_representable_path(canonical_path, conn.name_max, conn.path_max);
++  }
+ 
+   int flags = O_RDONLY;
+   bool do_odirect = conn.use_odirect &&
+@@ -247,16 +425,34 @@ void FSConnector::do_single_get(WorkerFSConn& conn, const std::string& key,
+ void FSConnector::do_single_set(WorkerFSConn& conn, const std::string& key,
+                                 const void* buf, size_t len,
+                                 size_t chunk_size) {
+-  std::string filename = key_to_filename(key);
+-  auto file_path = conn.base_path / filename;
++  const auto relative_path = key_to_relative_path(key);
++  auto file_path = conn.base_path / relative_path;
+ 
+   // Skip if already stored on disk
+-  if (std::filesystem::exists(file_path)) {
++  if (path_is_representable(file_path, conn.name_max, conn.path_max) &&
++      std::filesystem::exists(file_path)) {
+     return;
+   }
++  if (relative_path.has_parent_path()) {
++    std::error_code exists_ec;
++    const auto legacy_path = conn.base_path / key_to_filename(key);
++    if (path_is_representable(legacy_path, conn.name_max, conn.path_max) &&
++        std::filesystem::exists(legacy_path, exists_ec)) {
++      return;
++    }
++  }
++  require_representable_path(file_path, conn.name_max, conn.path_max);
+ 
+   const auto tmp_dir =
+       conn.tmp_dir.empty() ? file_path.parent_path() : conn.tmp_dir;
++  const auto longest_tmp_path =
++      tmp_dir / (std::string(".lmcache-write") + TMP_EXT + "." +
++                 std::to_string(static_cast<uint64_t>(::getpid())) + "." +
++                 std::string(20, '9'));
++  require_representable_path(longest_tmp_path, conn.name_max, conn.path_max);
++  if (relative_path.has_parent_path()) {
++    std::filesystem::create_directories(file_path.parent_path());
++  }
+   std::filesystem::path tmp_path;
+   int flags = O_CREAT | O_EXCL | O_WRONLY;
+   if (conn.use_odirect) {
+@@ -267,9 +463,10 @@ void FSConnector::do_single_set(WorkerFSConn& conn, const std::string& key,
+   for (size_t attempt = 0; attempt < 1024; ++attempt) {
+     const uint64_t id =
+         next_temp_file_id.fetch_add(1, std::memory_order_relaxed);
+-    tmp_path = tmp_dir / (filename + TMP_EXT + "." +
++    tmp_path = tmp_dir / (std::string(".lmcache-write") + TMP_EXT + "." +
+                           std::to_string(static_cast<uint64_t>(::getpid())) +
+                           "." + std::to_string(id));
++    require_representable_path(tmp_path, conn.name_max, conn.path_max);
+     fd = ::open(tmp_path.c_str(), flags, 0644);
+     if (fd >= 0) break;
+     if (errno != EEXIST) {
+@@ -312,16 +509,47 @@ void FSConnector::do_single_set(WorkerFSConn& conn, const std::string& key,
+ }
+ 
+ bool FSConnector::do_single_exists(WorkerFSConn& conn, const std::string& key) {
+-  std::string filename = key_to_filename(key);
+-  auto file_path = conn.base_path / filename;
+-  return std::filesystem::exists(file_path);
++  const auto relative_path = key_to_relative_path(key);
++  const auto file_path = conn.base_path / relative_path;
++  std::error_code exists_ec;
++  const bool canonical_fits =
++      path_is_representable(file_path, conn.name_max, conn.path_max);
++  if (canonical_fits && std::filesystem::exists(file_path, exists_ec)) {
++    return true;
++  }
++  if (relative_path.has_parent_path()) {
++    const auto legacy_path = conn.base_path / key_to_filename(key);
++    exists_ec.clear();
++    if (path_is_representable(legacy_path, conn.name_max, conn.path_max) &&
++        std::filesystem::exists(legacy_path, exists_ec)) {
++      return true;
++    }
++  }
++  if (!canonical_fits) {
++    require_representable_path(file_path, conn.name_max, conn.path_max);
++  }
++  return false;
+ }
+ 
+ bool FSConnector::do_single_delete(WorkerFSConn& conn, const std::string& key) {
+-  std::string filename = key_to_filename(key);
+-  auto file_path = conn.base_path / filename;
++  const auto relative_path = key_to_relative_path(key);
++  auto file_path = conn.base_path / relative_path;
+   std::error_code ec;
+-  return std::filesystem::remove(file_path, ec);
++  const bool canonical_fits =
++      path_is_representable(file_path, conn.name_max, conn.path_max);
++  if (canonical_fits && std::filesystem::remove(file_path, ec)) return true;
++  if (relative_path.has_parent_path()) {
++    const auto legacy_path = conn.base_path / key_to_filename(key);
++    ec.clear();
++    if (path_is_representable(legacy_path, conn.name_max, conn.path_max) &&
++        std::filesystem::remove(legacy_path, ec)) {
++      return true;
++    }
++  }
++  if (!canonical_fits) {
++    require_representable_path(file_path, conn.name_max, conn.path_max);
++  }
++  return false;
+ }
+ 
+ }  // namespace connector
+diff --git a/csrc/storage_backends/fs/connector.h b/csrc/storage_backends/fs/connector.h
+index a8dafe3cff01af6134dda530a9e654ec6d1417cd..afe28f2e7d282007ef95ffdd2f19233c837c64e2 100644
+--- a/csrc/storage_backends/fs/connector.h
++++ b/csrc/storage_backends/fs/connector.h
+@@ -7,6 +7,7 @@
+ #include <sys/statvfs.h>
+ #include <unistd.h>
+ #include <cstring>
++#include <array>
+ #include <filesystem>
+ #include <string>
+ #include <vector>
+@@ -19,6 +20,9 @@ static constexpr char KEY_SEP = '@';
+ static constexpr const char* PATH_SLASH_REPLACEMENT = "-SEP-";
+ static constexpr const char* FILE_EXT = ".data";
+ static constexpr const char* TMP_EXT = ".tmp";
++static constexpr const char* BOUNDED_PATH_VERSION = ".lmcache-objects-v1";
++static constexpr size_t LEGACY_FILENAME_MAX_BYTES = 255;
++static constexpr size_t ENCODED_COMPONENT_MAX_CHARS = 200;
+ 
+ // Per-worker connection state for the FS connector. O_DIRECT is enabled per
+ // request only when both the transfer length and caller-owned buffer address
+@@ -28,6 +32,9 @@ struct WorkerFSConn {
+   std::filesystem::path tmp_dir;  // empty if not configured
+   bool use_odirect = false;
+   size_t disk_block_size = 0;
++  // Zero denotes a filesystem that reports no fixed limit.
++  size_t name_max = 0;
++  size_t path_max = 0;
+   // If > 0, trigger filesystem readahead by issuing a small
+   // initial read of this many bytes before reading the rest.
+   size_t read_ahead_size = 0;
+@@ -69,6 +76,12 @@ class FSConnector : public ConnectorBase<WorkerFSConn> {
+   // key or a current unsalted key.
+   static std::string key_to_filename(const std::string& key);
+ 
++  // Preserve the flat filename when it fits NAME_MAX. Oversized keys use a
++  // reversible hierarchy whose individual components remain bounded.
++  static std::filesystem::path key_to_relative_path(const std::string& key);
++
++  static std::string hex_encode(const std::string& value);
++
+   static std::string replace_all(const std::string& str,
+                                  const std::string& from,
+                                  const std::string& to);
+@@ -78,6 +91,8 @@ class FSConnector : public ConnectorBase<WorkerFSConn> {
+   bool use_odirect_;
+   size_t disk_block_size_;
+   size_t read_ahead_size_;
++  size_t name_max_;
++  size_t path_max_;
+ };
+ 
+ }  // namespace connector
+diff --git a/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md b/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md
+index 7dc8e41061453641a4d1feb4c5bee291cff4622e..118cc2daa8bfd8b3e2b16ec660d70f21f32ecb91 100644
+--- a/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md
++++ b/docs/design/v1/distributed/l2_adapters/l2_per_user_quota.md
+@@ -4,6 +4,9 @@ This document describes the per-user quota mechanism for L2 adapters: how
+ per-user storage limits are enforced, how user identity propagates through the
+ system, and what changes are needed across the codebase.
+ 
++This feature is supported only in multiprocess (MP) mode; the deprecated
++in-process mode is outside its scope.
++
+ ## Motivation
+ 
+ Currently, L2 eviction operates on **aggregate** storage usage. A single
+diff --git a/lmcache/v1/distributed/api.py b/lmcache/v1/distributed/api.py
+index b6128c6f7f2ae8bfba03ec62d56bdf75d99a26ca..331689996bdc68a091f58e47eaeb1671d607b1ab 100644
+--- a/lmcache/v1/distributed/api.py
++++ b/lmcache/v1/distributed/api.py
+@@ -128,6 +128,8 @@ class ObjectKey:
+             raise ValueError(
+                 f"model_name must not contain '@' (got {self.model_name!r})"
+             )
++        if self.kv_rank < 0:
++            raise ValueError(f"kv_rank must be >= 0 (got {self.kv_rank})")
+         if self.object_group_id < 0:
+             raise ValueError(
+                 f"object_group_id must be >= 0 (got {self.object_group_id})"
+diff --git a/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py b/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py
+index ae3bc092a851af8a5ccdef975e44f82eccca3aa9..4d98535e30b0326742cb2e80970b18b5fd8adcb7 100644
+--- a/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py
++++ b/lmcache/v1/distributed/l2_adapters/fs_l2_adapter.py
+@@ -3,8 +3,9 @@
+ File-system based L2 adapter using aiofiles for async I/O.
+ 
+ Stores KV cache objects as raw tensor bytes on disk (no metadata
+-header).  Each ObjectKey maps to a separate ``.data`` file whose
+-name encodes all key fields so it can be reversed on startup.
++header). Each ObjectKey maps to a separate ``.data`` file. Names that fit the
++filesystem component limit use the flat layout. Oversized names use bounded,
++reversible path components so restart inventory retains the complete key.
+ """
+ 
+ # Future
+@@ -56,6 +57,10 @@ _KEY_SEP = "@"
+ # csrc/storage_backends/fs/connector.cpp.
+ _PATH_SLASH_REPLACEMENT = "-SEP-"
+ _FILE_EXT = ".data"
++# Keep ObjectKey-to-filename mapping independent of local filesystem settings.
++_LEGACY_FILENAME_MAX_BYTES = 255
++_BOUNDED_PATH_VERSION = ".lmcache-objects-v1"
++_ENCODED_COMPONENT_MAX_CHARS = 200
+ 
+ 
+ def _write_all(fd: int, buf: bytes | bytearray | memoryview) -> None:
+@@ -157,7 +162,7 @@ def _object_key_to_filename(key: ObjectKey) -> str:
+ def _filename_to_object_key(
+     filename: str,
+ ) -> Optional[ObjectKey]:
+-    """Reverse ``_object_key_to_filename``.
++    """Reverse legacy filenames produced by ``_object_key_to_filename``.
+ 
+     Accepts both the 4-field unsalted shape and the 5-field salted
+     shape (trailing ``cache_salt``). Returns ``None`` for anything
+@@ -197,6 +202,138 @@ def _filename_to_object_key(
+         return None
+ 
+ 
++def _hex_path_components(value: str) -> list[str]:
++    """Encode a key field into bounded, path-safe components."""
++    encoded = value.encode("utf-8", errors="surrogatepass").hex()
++    return [
++        encoded[offset : offset + _ENCODED_COMPONENT_MAX_CHARS]
++        for offset in range(0, len(encoded), _ENCODED_COMPONENT_MAX_CHARS)
++    ]
++
++
++def _ascii_path_components(value: str) -> list[str]:
++    """Split a path-safe ASCII key field into bounded components."""
++    return [
++        value[offset : offset + _ENCODED_COMPONENT_MAX_CHARS]
++        for offset in range(0, len(value), _ENCODED_COMPONENT_MAX_CHARS)
++    ]
++
++
++def _object_key_to_bounded_relative_path(key: ObjectKey) -> Path:
++    """Map an oversized ObjectKey to a reversible bounded relative path.
++
++    Model identity and tenant salt are preserved exactly so restart inventory
++    can reconstruct capacity and per-tenant accounting without a sidecar.
++    """
++    model_parts = _hex_path_components(key.model_name)
++    salt_parts = _hex_path_components(key.cache_salt)
++    leaf = (
++        f"{key.kv_rank:#010x}{_KEY_SEP}{key.object_group_id:x}"
++        f"{_KEY_SEP}{key.chunk_hash.hex()}{_FILE_EXT}"
++    )
++    prefix = Path(
++        _BOUNDED_PATH_VERSION,
++        f"m{len(model_parts)}",
++        *model_parts,
++        f"s{len(salt_parts)}",
++        *salt_parts,
++    )
++    if len(os.fsencode(leaf)) <= _LEGACY_FILENAME_MAX_BYTES:
++        return prefix / leaf
++
++    rank_parts = _ascii_path_components(f"{key.kv_rank:#010x}")
++    group_parts = _ascii_path_components(f"{key.object_group_id:x}")
++    hash_parts = _ascii_path_components(key.chunk_hash.hex())
++    return Path(
++        prefix,
++        f"r{len(rank_parts)}",
++        *rank_parts,
++        f"g{len(group_parts)}",
++        *group_parts,
++        f"h{len(hash_parts)}",
++        *hash_parts,
++        f"object{_FILE_EXT}",
++    )
++
++
++def _object_key_to_relative_path(key: ObjectKey) -> Path:
++    """Return a stable flat or bounded storage path for an ObjectKey."""
++    legacy_filename = _object_key_to_filename(key)
++    canonical_bytes = legacy_filename.encode("utf-8", errors="surrogatepass")
++    if len(canonical_bytes) <= _LEGACY_FILENAME_MAX_BYTES:
++        return Path(legacy_filename)
++    return _object_key_to_bounded_relative_path(key)
++
++
++def _bounded_relative_path_to_object_key(
++    relative_path: Path,
++) -> Optional[ObjectKey]:
++    """Decode the reversible bounded path shape into its ObjectKey."""
++    parts = relative_path.parts
++    if len(parts) < 4 or parts[0] != _BOUNDED_PATH_VERSION:
++        return None
++    try:
++        model_count = int(parts[1][1:]) if parts[1].startswith("m") else -1
++        model_start = 2
++        salt_marker = model_start + model_count
++        if model_count < 0 or salt_marker >= len(parts):
++            return None
++        salt_header = parts[salt_marker]
++        salt_count = int(salt_header[1:]) if salt_header.startswith("s") else -1
++        salt_start = salt_marker + 1
++        suffix_start = salt_start + salt_count
++        if salt_count < 0 or suffix_start >= len(parts):
++            return None
++
++        model_name = bytes.fromhex("".join(parts[model_start:salt_marker])).decode(
++            "utf-8", errors="surrogatepass"
++        )
++        cache_salt = bytes.fromhex("".join(parts[salt_start:suffix_start])).decode(
++            "utf-8", errors="surrogatepass"
++        )
++        leaf = parts[-1]
++        if not leaf.endswith(_FILE_EXT):
++            return None
++        key_parts = leaf[: -len(_FILE_EXT)].split(_KEY_SEP)
++        if suffix_start == len(parts) - 1 and len(key_parts) == 3:
++            kv_rank_str, object_group_str, chunk_hash_hex = key_parts
++        else:
++            rank_header = parts[suffix_start]
++            rank_count = int(rank_header[1:]) if rank_header.startswith("r") else -1
++            rank_start = suffix_start + 1
++            group_marker = rank_start + rank_count
++            if rank_count <= 0 or group_marker >= len(parts):
++                return None
++            group_header = parts[group_marker]
++            group_count = int(group_header[1:]) if group_header.startswith("g") else -1
++            group_start = group_marker + 1
++            hash_marker = group_start + group_count
++            if group_count <= 0 or hash_marker >= len(parts):
++                return None
++            hash_header = parts[hash_marker]
++            hash_count = int(hash_header[1:]) if hash_header.startswith("h") else -1
++            hash_start = hash_marker + 1
++            leaf_index = hash_start + hash_count
++            if (
++                hash_count < 0
++                or leaf_index != len(parts) - 1
++                or leaf != f"object{_FILE_EXT}"
++            ):
++                return None
++            kv_rank_str = "".join(parts[rank_start:group_marker])
++            object_group_str = "".join(parts[group_start:hash_marker])
++            chunk_hash_hex = "".join(parts[hash_start:leaf_index])
++        return ObjectKey(
++            chunk_hash=bytes.fromhex(chunk_hash_hex),
++            model_name=model_name,
++            kv_rank=int(kv_rank_str, 16),
++            object_group_id=int(object_group_str, 16),
++            cache_salt=cache_salt,
++        )
++    except (UnicodeDecodeError, ValueError):
++        return None
++
++
+ class FSL2AdapterConfig(L2AdapterConfigBase):
+     """
+     Config for the filesystem-backed L2 adapter.
+@@ -277,9 +414,9 @@ class FSL2Adapter(L2AdapterInterface):
+     """
+     File-system backed L2 adapter with async I/O via *aiofiles*.
+ 
+-    Each file stores **only** the raw tensor bytes (no metadata
+-    header), which gives maximum I/O throughput.  The file name
+-    itself encodes the full ``ObjectKey`` so it is reversible.
++    Each file stores **only** the raw tensor bytes (no metadata header), which
++    gives maximum I/O throughput. Representable file names encode the complete
++    ``ObjectKey``; oversized names use a reversible bounded path.
+ 
+     Thread safety is ensured via a lock for shared bookkeeping
+     and an asyncio event loop running on a dedicated daemon
+@@ -310,6 +447,27 @@ class FSL2Adapter(L2AdapterInterface):
+                 parents=False, exist_ok=True
+             )
+ 
++        try:
++            name_limits = [os.pathconf(self._base_path, "PC_NAME_MAX")]
++            path_limits = [os.pathconf(self._base_path, "PC_PATH_MAX")]
++            if self._relative_tmp_dir is not None:
++                tmp_path = self._base_path / self._relative_tmp_dir
++                name_limits.append(os.pathconf(tmp_path, "PC_NAME_MAX"))
++                path_limits.append(os.pathconf(tmp_path, "PC_PATH_MAX"))
++        except (OSError, ValueError) as exc:
++            raise RuntimeError(
++                f"Failed to determine filesystem path limits for FS L2 adapter: {exc}"
++            ) from exc
++        finite_name_limits = [limit for limit in name_limits if limit >= 0]
++        self._name_max = min(finite_name_limits, default=None)
++        if self._name_max is not None and self._name_max < _LEGACY_FILENAME_MAX_BYTES:
++            raise ValueError(
++                "FS L2 adapter requires PC_NAME_MAX >= "
++                f"{_LEGACY_FILENAME_MAX_BYTES}, got {self._name_max}"
++            )
++        finite_path_limits = [limit for limit in path_limits if limit >= 0]
++        self._path_max = min(finite_path_limits, default=None)
++
+         # I/O tuning options aligned with FSConnector
+         self._read_ahead_size = config.read_ahead_size
+         self._use_odirect = config.use_odirect
+@@ -533,7 +691,42 @@ class FSL2Adapter(L2AdapterInterface):
+         return tid
+ 
+     def _key_to_path(self, key: ObjectKey) -> Path:
+-        return self._base_path / _object_key_to_filename(key)
++        path = self._base_path / _object_key_to_relative_path(key)
++        self._require_representable_path(path)
++        return path
++
++    def _key_candidate_paths(self, key: ObjectKey) -> tuple[Path, ...]:
++        """Return canonical-first paths accepted for one cache object.
++
++        Oversized keys used flat filenames before bounded paths were
++        introduced. Filesystems with a larger component limit can therefore
++        contain a valid legacy object that must remain readable and must block
++        a duplicate canonical store.
++        """
++        canonical = self._base_path / _object_key_to_relative_path(key)
++        legacy = self._base_path / _object_key_to_filename(key)
++        candidates: list[Path] = []
++        if self._path_is_representable(canonical):
++            candidates.append(canonical)
++        if (
++            canonical != legacy
++            and (
++                self._name_max is None
++                or len(os.fsencode(legacy.name)) <= self._name_max
++            )
++            and self._path_is_representable(legacy)
++        ):
++            candidates.append(legacy)
++        if not candidates:
++            self._require_representable_path(canonical)
++        return tuple(candidates)
++
++    async def _existing_key_path(self, key: ObjectKey) -> Optional[Path]:
++        """Resolve the first existing canonical or compatible legacy path."""
++        for path in self._key_candidate_paths(key):
++            if await aiofiles.os.path.exists(path):
++                return path
++        return None
+ 
+     async def _key_exists_on_disk(
+         self,
+@@ -545,8 +738,7 @@ class FSL2Adapter(L2AdapterInterface):
+         non-blocking and always reflects the real FS state,
+         which is critical for multi-node shared-FS setups.
+         """
+-        path = self._key_to_path(key)
+-        return await aiofiles.os.path.exists(path)
++        return await self._existing_key_path(key) is not None
+ 
+     def _key_to_file_and_tmp_path(self, key: ObjectKey) -> tuple[Path, Path]:
+         """Return ``(final_path, tmp_path)``.
+@@ -556,15 +748,32 @@ class FSL2Adapter(L2AdapterInterface):
+         ``FSConnector._get_file_and_tmp_path``).  Otherwise a
+         ``.tmp`` suffix is used.
+         """
+-        fname = _object_key_to_filename(key)
+-        final = self._base_path / fname
++        relative_path = _object_key_to_relative_path(key)
++        final = self._base_path / relative_path
++        self._require_representable_path(final)
+         if self._relative_tmp_dir is not None:
+             tmp_dir = self._base_path / self._relative_tmp_dir
+         else:
+-            tmp_dir = self._base_path
+-        tmp = tmp_dir / f"{fname}.tmp"
++            tmp_dir = final.parent
++        # The caller appends a PID and UUID. Keep the temporary basename
++        # independent of the final key so a valid 255-byte legacy name cannot
++        # overflow the same filesystem's component limit during publication.
++        tmp = tmp_dir / ".lmcache-write.tmp"
+         return final, tmp
+ 
++    def _path_is_representable(self, path: Path) -> bool:
++        """Return whether the encoded path fits the filesystem path limit."""
++        return self._path_max is None or len(os.fsencode(path)) < self._path_max
++
++    def _require_representable_path(self, path: Path) -> None:
++        """Reject a path that cannot be passed to the target filesystem."""
++        if not self._path_is_representable(path):
++            path_bytes = len(os.fsencode(path))
++            raise ValueError(
++                f"FS L2 object path uses {path_bytes} bytes, but PC_PATH_MAX "
++                f"is {self._path_max}"
++            )
++
+     # ---- O_DIRECT helpers -----------------------------------------------
+ 
+     def _read_with_odirect(
+@@ -647,16 +856,17 @@ class FSL2Adapter(L2AdapterInterface):
+         stored_sizes: list[int] = []
+         try:
+             for key, obj in zip(keys, objects, strict=True):
+-                file_path, tmp_template = self._key_to_file_and_tmp_path(key)
+-
+                 # Skip if already stored on disk
+-                if await aiofiles.os.path.exists(file_path):
++                if await self._existing_key_path(key) is not None:
+                     continue
++                file_path, tmp_template = self._key_to_file_and_tmp_path(key)
+                 buf = obj.byte_array
+                 size = len(buf)
+                 tmp_path = tmp_template.with_name(
+                     f"{tmp_template.name}.{os.getpid()}.{uuid.uuid4().hex}"
+                 )
++                self._require_representable_path(tmp_path)
++                file_path.parent.mkdir(parents=True, exist_ok=True)
+ 
+                 try:
+                     # Decide whether O_DIRECT is usable
+@@ -733,7 +943,12 @@ class FSL2Adapter(L2AdapterInterface):
+     ) -> None:
+         bitmap = Bitmap(len(keys))
+         for i, key in enumerate(keys):
+-            if not await self._key_exists_on_disk(key):
++            try:
++                key_exists = await self._key_exists_on_disk(key)
++            except ValueError:
++                logger.exception("FSL2Adapter rejected unrepresentable key %s", key)
++                continue
++            if not key_exists:
+                 continue
+             bitmap.set(i)
+ 
+@@ -751,8 +966,8 @@ class FSL2Adapter(L2AdapterInterface):
+     ) -> None:
+         bitmap = Bitmap(len(keys))
+         for i, key in enumerate(keys):
+-            file_path = self._key_to_path(key)
+             try:
++                file_path = await self._existing_key_path(key) or self._key_to_path(key)
+                 dst_buf = objects[i].byte_array
+                 expected = len(dst_buf)
+                 num_read: Optional[int] = None
+@@ -819,8 +1034,8 @@ class FSL2Adapter(L2AdapterInterface):
+                 continue
+             except Exception:
+                 logger.exception(
+-                    "FSL2Adapter failed to load %s",
+-                    file_path,
++                    "FSL2Adapter failed to load key %s",
++                    key,
+                 )
+                 continue
+ 
+@@ -841,7 +1056,13 @@ class FSL2Adapter(L2AdapterInterface):
+         sem = asyncio.Semaphore(self._DELETE_CONCURRENCY)
+ 
+         async def _delete_one(key: ObjectKey) -> tuple[ObjectKey, int] | None:
+-            file_path = self._key_to_path(key)
++            try:
++                file_path = await self._existing_key_path(key)
++            except ValueError:
++                logger.exception("FSL2Adapter rejected unrepresentable key %s", key)
++                return None
++            if file_path is None:
++                return None
+             async with sem:
+                 try:
+                     size = (await aiofiles.os.stat(file_path)).st_size
+diff --git a/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py b/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py
+index 4d09e5e16021f1add50d3f14e8dd6d0a9f460c2f..a712689a274cb937f8bb3edfa7ef57357965310a 100644
+--- a/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py
++++ b/lmcache/v1/distributed/l2_adapters/fs_native_l2_adapter.py
+@@ -10,8 +10,10 @@ Backed by the native C++ filesystem connector wrapped with
+ from __future__ import annotations
+ 
+ # Standard
++from pathlib import Path
+ from typing import TYPE_CHECKING, Optional
+ import os
++import stat
+ 
+ if TYPE_CHECKING:
+     from lmcache.v1.distributed.internal_api import (
+@@ -32,6 +34,8 @@ from lmcache.v1.distributed.l2_adapters.factory import (
+     register_l2_adapter_factory,
+ )
+ from lmcache.v1.distributed.l2_adapters.fs_l2_adapter import (
++    _BOUNDED_PATH_VERSION,
++    _bounded_relative_path_to_object_key,
+     _filename_to_object_key,
+ )
+ 
+@@ -44,10 +48,10 @@ _IGNORED_FILE_SAMPLE_LIMIT = 5
+ def _scan_existing_key_sizes(base_path: str) -> dict[ObjectKey, int]:
+     """Inventory complete native-FS objects before the client starts.
+ 
+-    Only direct, regular, positive-size ``.data`` files with filenames
+-    reversible by the current ObjectKey codec are counted. Entries are returned
+-    oldest-to-newest by ``(mtime_ns, filename)`` so an LRU policy can reconstruct
+-    a deterministic best-effort order. The cache directory is expected to be
++    Regular, positive-size ``.data`` objects in either the legacy flat layout
++    or the bounded reversible layout are counted. Entries are returned
++    oldest-to-newest by ``(mtime_ns, path)`` so an LRU policy can reconstruct a
++    deterministic best-effort order. The cache directory is expected to be
+     quiescent (or exclusively owned by this server) during startup: a file that
+     disappears during the scan is skipped, while every other I/O error fails
+     construction instead of silently undercounting capacity.
+@@ -87,7 +91,7 @@ def _scan_existing_key_sizes(base_path: str) -> dict[ObjectKey, int]:
+                     continue
+ 
+                 try:
+-                    stat = entry.stat(follow_symlinks=False)
++                    entry_stat = entry.stat(follow_symlinks=False)
+                 except FileNotFoundError:
+                     # A concurrent cleanup can remove an entry between listing
+                     # and stat. No controller is connected to this adapter yet.
+@@ -97,12 +101,14 @@ def _scan_existing_key_sizes(base_path: str) -> dict[ObjectKey, int]:
+                         f"Failed to stat native FS cache entry {entry.path!r}: {exc}"
+                     ) from exc
+ 
+-                if stat.st_size <= 0:
++                if entry_stat.st_size <= 0:
+                     ignored_data_count += 1
+                     if len(ignored_data_files) < _IGNORED_FILE_SAMPLE_LIMIT:
+                         ignored_data_files.append(entry.name)
+                     continue
+-                records.append((stat.st_mtime_ns, entry.name, key, stat.st_size))
++                records.append(
++                    (entry_stat.st_mtime_ns, entry.name, key, entry_stat.st_size)
++                )
+     except RuntimeError:
+         raise
+     except OSError as exc:
+@@ -110,6 +116,73 @@ def _scan_existing_key_sizes(base_path: str) -> dict[ObjectKey, int]:
+             f"Failed while scanning native FS cache directory {base_path!r}: {exc}"
+         ) from exc
+ 
++    bounded_root = os.path.join(base_path, _BOUNDED_PATH_VERSION)
++    try:
++        bounded_stat = os.stat(bounded_root, follow_symlinks=False)
++    except FileNotFoundError:
++        bounded_root_exists = False
++    except OSError as exc:
++        raise RuntimeError(
++            f"Failed to inspect native FS bounded cache root {bounded_root!r}: {exc}"
++        ) from exc
++    else:
++        if not stat.S_ISDIR(bounded_stat.st_mode):
++            raise RuntimeError(
++                f"Native FS bounded cache root is not a directory: {bounded_root!r}"
++            )
++        bounded_root_exists = True
++
++    if bounded_root_exists:
++
++        def _raise_walk_error(exc: OSError) -> None:
++            raise RuntimeError(
++                f"Failed while scanning native FS cache directory {base_path!r}: {exc}"
++            ) from exc
++
++        for root, directories, filenames in os.walk(
++            bounded_root,
++            topdown=True,
++            onerror=_raise_walk_error,
++            followlinks=False,
++        ):
++            directories[:] = [
++                name
++                for name in directories
++                if not os.path.islink(os.path.join(root, name))
++            ]
++            for filename in filenames:
++                if not filename.endswith(_FILE_EXT):
++                    continue
++                path = os.path.join(root, filename)
++                try:
++                    file_stat = os.lstat(path)
++                except FileNotFoundError:
++                    continue
++                except OSError as exc:
++                    raise RuntimeError(
++                        f"Failed to stat native FS cache entry {path!r}: {exc}"
++                    ) from exc
++                if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_size <= 0:
++                    ignored_data_count += 1
++                    if len(ignored_data_files) < _IGNORED_FILE_SAMPLE_LIMIT:
++                        ignored_data_files.append(path)
++                    continue
++                relative_path = Path(os.path.relpath(path, base_path))
++                key = _bounded_relative_path_to_object_key(relative_path)
++                if key is None:
++                    ignored_data_count += 1
++                    if len(ignored_data_files) < _IGNORED_FILE_SAMPLE_LIMIT:
++                        ignored_data_files.append(str(relative_path))
++                    continue
++                records.append(
++                    (
++                        file_stat.st_mtime_ns,
++                        relative_path.as_posix(),
++                        key,
++                        file_stat.st_size,
++                    )
++                )
++
+     if ignored_data_count:
+         logger.warning(
+             "Ignored %d unrecognized or empty native FS .data files during "
+diff --git a/lmcache/v1/multiprocess/modules/engine_driven_transfer.py b/lmcache/v1/multiprocess/modules/engine_driven_transfer.py
+index b1f6ca7f3c8fa0bb07937083a6fd992d2dab36d6..4e92b34f18e1f3c338f58b673562870c143cf82d 100644
+--- a/lmcache/v1/multiprocess/modules/engine_driven_transfer.py
++++ b/lmcache/v1/multiprocess/modules/engine_driven_transfer.py
+@@ -160,6 +160,7 @@ class EngineDrivenTransferModule(InstanceLivenessTarget):
+             }
+ 
+         return {
++            "engine_driven_shm_pool": dict(self._shm_pool_info),
+             "registered_non_cuda_instance_ids": registered_non_cuda_ids,
+             "non_cuda_context_meta": non_cuda_context_meta,
+         }
+diff --git a/lmcache/v1/multiprocess/server.py b/lmcache/v1/multiprocess/server.py
+index cf3e81d941647f1a00754b65230e5beab9d0efcf..6e7d91a27703a80a17084c6f89e601bdc9fe1176 100644
+--- a/lmcache/v1/multiprocess/server.py
++++ b/lmcache/v1/multiprocess/server.py
+@@ -19,10 +19,14 @@ from lmcache.usage_telemetry.l2_usage import InitializeL2ConnectorUsage
+ from lmcache.usage_telemetry.mp import InitializeMPUsageContext
+ from lmcache.usage_telemetry.mp_continuous import InitializeMPContinuousUsage
+ from lmcache.v1.distributed.config import (
++    L1MemoryManagerConfig,
+     StorageManagerConfig,
+     add_storage_manager_args,
+     parse_args_to_config,
+ )
++from lmcache.v1.distributed.memory_manager.l1_memory_manager import (
++    _unlink_stale_shm,
++)
+ from lmcache.v1.distributed.storage_manager import StorageManager
+ from lmcache.v1.mp_observability.config import (
+     ObservabilityConfig,
+@@ -74,6 +78,45 @@ from lmcache.v1.platform.isolated_ipc import set_isolated_ipc
+ logger = init_logger(__name__)
+ 
+ 
++def _unlink_configured_l1_shm(shm_name: str) -> None:
++    """Remove the exact named L1 pool before measuring available capacity.
++
++    The L1 memory manager performs the same cleanup immediately before it
++    creates the pool. Doing it before the capacity check makes ``disk_usage``
++    authoritative: an unused stale object releases its actual allocated pages,
++    while an object still mapped by another process remains charged to tmpfs.
++    """
++    bare = shm_name.lstrip("/")
++    if not bare.startswith("lmcache_l1_pool_"):
++        bare = f"lmcache_l1_pool_{bare}"
++    _unlink_stale_shm(bare)
++
++
++def _available_l1_shm_bytes_after_cleanup(shm_name: str) -> int:
++    """Return tmpfs capacity after removing the replaceable named pool."""
++    _unlink_configured_l1_shm(shm_name)
++    return shutil.disk_usage("/dev/shm").free
++
++
++def _available_configured_l1_shm_bytes(
++    mem_cfg: L1MemoryManagerConfig,
++) -> int | None:
++    """Return usable POSIX-SHM capacity for a configuration that uses it.
++
++    Lazy DRAM and Device-DAX configurations do not publish a POSIX shared
++    memory pool to engine workers. Their configured ``shm_name`` must not be
++    unlinked during restart because this process will not replace that object.
++    """
++    if (
++        not mem_cfg.shm_name
++        or mem_cfg.use_lazy
++        or mem_cfg.devdax_path
++        or not sys.platform.startswith("linux")
++    ):
++        return None
++    return _available_l1_shm_bytes_after_cleanup(mem_cfg.shm_name)
++
++
+ class MPCacheServer:
+     """Compositor that assembles pluggable engine modules.
+ 
+@@ -372,11 +415,12 @@ def run_cache_server(
+         mem_cfg = storage_manager_config.l1_manager_config.memory_config
+         if mp_config.shm_name is not None:
+             mem_cfg.shm_name = mp_config.shm_name
+-        if mem_cfg.shm_name and sys.platform.startswith("linux"):
+-            logger.info("Checking if shm capacity is larger than L1 request")
++        if mem_cfg.shm_name:
+             try:
+-                free_bytes = shutil.disk_usage("/dev/shm").free
+-                if free_bytes < mem_cfg.size_in_bytes:
++                free_bytes = _available_configured_l1_shm_bytes(mem_cfg)
++                if free_bytes is not None:
++                    logger.info("Checking if shm capacity is larger than L1 request")
++                if free_bytes is not None and free_bytes < mem_cfg.size_in_bytes:
+                     logger.warning(
+                         "Insufficient /dev/shm capacity: need %d bytes, have %d bytes. "
+                         "Disabling SHM, falling back to pickle.",
+diff --git a/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py b/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py
+index 8237b1aa7b44b1822f9125d88019f6d8a1013efe..1f4ef7efd6b1830686bd3a81186112f5e856a8d7 100644
+--- a/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py
++++ b/lmcache/v1/multiprocess/transfer_context/async_engine_driven.py
+@@ -3,6 +3,7 @@
+ 
+ # Standard
+ from concurrent.futures import ThreadPoolExecutor
++from queue import Queue
+ from typing import Any
+ import threading
+ 
+@@ -80,7 +81,18 @@ class AsyncEngineDrivenTransferContext(EngineDrivenTransferContext):
+         """
+         super().__init__()
+         self._commit_workers = max(1, int(commit_workers))
++        self._transfer_workspace_slot_count = self._commit_workers
+         self._copy_stream: Any = torch_dev.Stream()
++        # The pointer tables are immutable, while block-ID staging has one slot
++        # per background worker. Keep a store's producer wait and gather burst
++        # contiguous on the shared copy stream and retain its slot until the
++        # CUDA completion event fires.
++        self._copy_enqueue_lock = threading.Lock()
++        self._transfer_workspace_slots: Queue[int] = Queue(
++            maxsize=self._transfer_workspace_slot_count
++        )
++        for slot in range(self._transfer_workspace_slot_count):
++            self._transfer_workspace_slots.put_nowait(slot)
+         self._commit_executor: ThreadPoolExecutor = ThreadPoolExecutor(
+             max_workers=self._commit_workers,
+             thread_name_prefix="lmcache_engine_driven_commit",
+@@ -465,6 +477,7 @@ class AsyncEngineDrivenTransferContext(EngineDrivenTransferContext):
+                 ok = False
+                 prepared_store = False
+                 group_out_buffers: list[list[torch.Tensor]] | None = None
++                transfer_workspace_slot: int | None = None
+                 try:
+                     prepared = engine_driven_context.prepare_store_grouped(
+                         key, instance_id
+@@ -477,19 +490,25 @@ class AsyncEngineDrivenTransferContext(EngineDrivenTransferContext):
+                         ok = True
+                         return
+ 
+-                    with torch.inference_mode(), torch_dev.stream(self._copy_stream):
+-                        event.wait(stream=self._copy_stream)
+-                        # A later group can fail after an earlier group has
+-                        # already enqueued a device-to-host copy.
+-                        gather_may_be_inflight = True
+-                        gathered_groups = self._gather_group_payloads(
+-                            kv_caches,
+-                            block_ids,
+-                            out_buffers=group_out_buffers,
+-                            group_chunk_indices=group_chunk_indices,
+-                        )
+-                        gather_done = torch_dev.Event()
+-                        gather_done.record(self._copy_stream)
++                    transfer_workspace_slot = self._transfer_workspace_slots.get()
++                    with self._copy_enqueue_lock:
++                        with (
++                            torch.inference_mode(),
++                            torch_dev.stream(self._copy_stream),
++                        ):
++                            event.wait(stream=self._copy_stream)
++                            # A later group can fail after an earlier group has
++                            # already enqueued a device-to-host copy.
++                            gather_may_be_inflight = True
++                            gathered_groups = self._gather_group_payloads(
++                                kv_caches,
++                                block_ids,
++                                out_buffers=group_out_buffers,
++                                group_chunk_indices=group_chunk_indices,
++                                transfer_workspace_slot=transfer_workspace_slot,
++                            )
++                            gather_done = torch_dev.Event()
++                            gather_done.record(self._copy_stream)
+ 
+                     with self._inflight_lock:
+                         self._inflight_gather_events.add(gather_done)
+@@ -497,6 +516,8 @@ class AsyncEngineDrivenTransferContext(EngineDrivenTransferContext):
+                     gather_launched.set()
+                     gather_done.synchronize()
+                     gather_may_be_inflight = False
++                    self._transfer_workspace_slots.put(transfer_workspace_slot)
++                    transfer_workspace_slot = None
+ 
+                     # SHM payload tensors are already written in place; pickle
+                     # transport serializes the group-major gathered tensors.
+@@ -538,6 +559,8 @@ class AsyncEngineDrivenTransferContext(EngineDrivenTransferContext):
+                             self._abort_store_safely(key, instance_id)
+                     ok = False
+                 finally:
++                    if transfer_workspace_slot is not None:
++                        self._transfer_workspace_slots.put(transfer_workspace_slot)
+                     with self._inflight_lock:
+                         if gather_done is not None:
+                             self._inflight_gather_events.discard(gather_done)
+diff --git a/lmcache/v1/multiprocess/transfer_context/base.py b/lmcache/v1/multiprocess/transfer_context/base.py
+index bd359cb1e3a7b8220cfa2a63c6bcc1326a8d4ef2..71feed3cd7846c3a65e4bb80266b4f0edef82e2b 100644
+--- a/lmcache/v1/multiprocess/transfer_context/base.py
++++ b/lmcache/v1/multiprocess/transfer_context/base.py
+@@ -45,6 +45,85 @@ if TYPE_CHECKING:
+ logger = init_logger(__name__)
+ 
+ 
++@dataclass
++class PagedKVTransferWorkspace:
++    """Persistent CUDA arguments for engine-driven paged-KV transfers.
++
++    The paged-cache pointer table is immutable for the lifetime of a registered
++    engine. Block IDs change for every cache object, so each in-flight store
++    receives a distinct pinned-host and device staging pair. One staging tensor
++    holds the four objects supported by a native transfer launch.
++    """
++
++    paged_buffer_ptrs: torch.Tensor
++    block_ids_host: tuple[torch.Tensor, ...]
++    block_ids_device: tuple[torch.Tensor, ...]
++
++    @property
++    def num_slots(self) -> int:
++        """Return the number of independent in-flight staging pairs."""
++        return len(self.block_ids_host)
++
++
++def create_paged_kv_transfer_workspace(
++    kv_caches: dict[str, torch.Tensor],
++    max_block_ids: int,
++    num_slots: int,
++    layout_hints: LayoutHints | None = None,
++    engine_kv_format: "lmcache_native.EngineKVFormat" | None = None,
++) -> PagedKVTransferWorkspace:
++    """Create immutable pointer metadata and reusable block-ID staging.
++
++    Args:
++        kv_caches: Per-layer tensors belonging to one transfer group.
++        max_block_ids: Maximum block-ID count passed to one native launch.
++        num_slots: Number of stores that may be in flight concurrently.
++        layout_hints: Optional engine layout hints.
++        engine_kv_format: Optional pre-detected KV format.
++
++    Returns:
++        Workspace whose tensors stay alive until the transfer context closes.
++    """
++    if max_block_ids < 1:
++        raise ValueError("max_block_ids must be positive")
++    if num_slots < 1:
++        raise ValueError("num_slots must be positive")
++
++    # First Party
++    from lmcache.v1.gpu_connector.utils import (
++        get_device,
++        get_group_data_ptrs,
++        get_num_layers,
++        normalize_kv_and_discover_format,
++    )
++
++    tensors = list(kv_caches.values())
++    discovered_format, normalized = normalize_kv_and_discover_format(
++        tensors, EngineType.VLLM, layout_hints=layout_hints
++    )
++    transfer_format = engine_kv_format or discovered_format
++    num_layers = get_num_layers(normalized, transfer_format)
++    pointer_values = np.array(
++        get_group_data_ptrs(normalized, transfer_format, list(range(num_layers))),
++        dtype=np.uint64,
++    ).view(np.int64)
++    device = get_device(normalized)
++    paged_buffer_ptrs = torch.from_numpy(pointer_values).to(device=device)
++    block_ids_host = tuple(
++        torch.empty(max_block_ids, dtype=torch.int64, device="cpu", pin_memory=True)
++        for _ in range(num_slots)
++    )
++    block_ids_device = tuple(
++        torch.empty(max_block_ids, dtype=torch.int64, device=device)
++        for _ in range(num_slots)
++    )
++    return PagedKVTransferWorkspace(
++        paged_buffer_ptrs=paged_buffer_ptrs,
++        block_ids_host=block_ids_host,
++        block_ids_device=block_ids_device,
++    )
++
++
+ # ---------------------------------------------------------------------------
+ # Global capability flag: does device_ops.multi_layer_block_kv_transfer accept
+ # list[torch.Tensor] directly for lmcache_objects_ptrs, or only list[int]?
+@@ -447,6 +526,8 @@ def gather_paged_kv_to_cpu(
+     chunk_indices: list[int] | None = None,
+     blocks_per_window: int | None = None,
+     group_idx: int = 0,
++    transfer_workspace: PagedKVTransferWorkspace | None = None,
++    transfer_workspace_slot: int = 0,
+ ) -> list[torch.Tensor]:
+     """Gather paged KV blocks into CPU chunk tensors.
+ 
+@@ -468,6 +549,11 @@ def gather_paged_kv_to_cpu(
+         blocks_per_window: Number of trailing physical blocks retained from
+             each logical chunk. ``None`` stores the whole chunk.
+         group_idx: Protocol-visible group index used in layout diagnostics.
++        transfer_workspace: Optional registered CUDA pointer table and reusable
++            block-ID staging. When omitted, CUDA tensors are allocated for
++            backward compatibility.
++        transfer_workspace_slot: Staging pair reserved for this in-flight
++            transfer.
+ 
+     Returns:
+         List of CPU tensors, one per chunk. For split-K/V formats each chunk
+@@ -634,22 +720,40 @@ def gather_paged_kv_to_cpu(
+ 
+         else:
+             # Compiled C++/CUDA/XPU: requires int64 pointer tensor and list[int].
+-            _ptrs_np = np.array(
+-                get_group_data_ptrs(
+-                    normalized, engine_kv_format, list(range(num_layers))
+-                ),
+-                dtype=np.uint64,
+-            ).view(np.int64)
+-            paged_arg = torch.from_numpy(_ptrs_np).to(device=get_device(normalized))
++            if transfer_workspace is None:
++                _ptrs_np = np.array(
++                    get_group_data_ptrs(
++                        normalized, engine_kv_format, list(range(num_layers))
++                    ),
++                    dtype=np.uint64,
++                ).view(np.int64)
++                paged_arg = torch.from_numpy(_ptrs_np).to(device=get_device(normalized))
++                block_ids_arg = torch.tensor(
++                    selected_block_ids,
++                    dtype=torch.int64,
++                    device=get_device(normalized),
++                )
++                block_ids_host = None
++                block_ids_device = None
++            else:
++                if not 0 <= transfer_workspace_slot < transfer_workspace.num_slots:
++                    raise ValueError(
++                        f"transfer_workspace_slot {transfer_workspace_slot} is "
++                        f"outside [0, {transfer_workspace.num_slots})"
++                    )
++                paged_arg = transfer_workspace.paged_buffer_ptrs
++                block_ids_arg = None
++                block_ids_host = transfer_workspace.block_ids_host[
++                    transfer_workspace_slot
++                ]
++                block_ids_device = transfer_workspace.block_ids_device[
++                    transfer_workspace_slot
++                ]
+ 
+             # This safely points to either the pre-pinned chunks
+             # OR the temporary staged_chunks
+             objs_arg = _tensors_to_ptrs(chunks)
+ 
+-            block_ids_arg = torch.tensor(
+-                selected_block_ids, dtype=torch.int64, device=get_device(normalized)
+-            )
+-
+             # Split transfer to respect CUDA kernel's object count limitation
+             MAX_OBJECTS = 4
+             req_blocks_per_obj = bpw
+@@ -663,7 +767,24 @@ def gather_paged_kv_to_cpu(
+                 end_block = min(
+                     (i + MAX_OBJECTS) * req_blocks_per_obj, len(selected_block_ids)
+                 )
+-                batch_blocks = block_ids_arg[start_block:end_block]
++                if transfer_workspace is None:
++                    assert block_ids_arg is not None
++                    batch_blocks = block_ids_arg[start_block:end_block]
++                else:
++                    assert block_ids_host is not None
++                    assert block_ids_device is not None
++                    batch_ids = selected_block_ids[start_block:end_block]
++                    batch_count = len(batch_ids)
++                    if batch_count > block_ids_host.numel():
++                        raise ValueError(
++                            f"transfer workspace holds {block_ids_host.numel()} "
++                            f"block IDs, but the launch requires {batch_count}"
++                        )
++                    block_ids_host[:batch_count].numpy()[:] = batch_ids
++                    block_ids_device[:batch_count].copy_(
++                        block_ids_host[:batch_count], non_blocking=True
++                    )
++                    batch_blocks = block_ids_device[:batch_count]
+ 
+                 # Execute batched transfer
+                 device_ops.multi_layer_block_kv_transfer(
+@@ -823,6 +944,9 @@ def scatter_cpu_to_paged_kv(
+     if not selected_block_ids:
+         return
+ 
++    # Only the ptr-only branch below pins temporaries; the tensor branch
++    # hands torch the chunks directly and keeps them alive itself.
++    dynamically_pinned = False
+     if _LMC_OPS_BLOCK_TRANSFER_ACCEPTS_TENSOR:
+         # Python fallback: accepts tensor list directly for all params.
+         paged_arg = normalized
+@@ -846,8 +970,8 @@ def scatter_cpu_to_paged_kv(
+         # Defensive check: Ensure all incoming CPU chunks are pinned memory.
+         # Otherwise, the underlying CUDA kernel may throw an Illegal
+         # Memory Access error during H2D transfer.
+-        pinned_copy = False
+-        if not all(chunk.is_pinned() for chunk in chunks):
++        dynamically_pinned = not all(chunk.is_pinned() for chunk in chunks)
++        if dynamically_pinned:
+             logger.warning(
+                 "Received unpinned CPU tensors in scatter_cpu_to_paged_kv. "
+                 "Dynamically pinning memory now, which may incur additional"
+@@ -857,7 +981,6 @@ def scatter_cpu_to_paged_kv(
+                 chunk.pin_memory() if not chunk.is_pinned() else chunk
+                 for chunk in chunks
+             ]
+-            pinned_copy = True
+ 
+         # Compiled C++/CUDA/XPU: requires int64 pointer tensor and list[int].
+         _ptrs_np = np.array(
+@@ -900,11 +1023,19 @@ def scatter_cpu_to_paged_kv(
+                 engine_kv_format,
+                 batch_skip,
+             )
+-        # Dynamically pinned tensors are local temporaries whose data pointers
+-        # must remain valid until the asynchronous transfer has completed.
+-        if pinned_copy:
+-            torch_dev.synchronize()
+     # Fast path: The async GPU copy might still be in progress.
+     # We intentionally omit synchronization here for performance.
+     # WARNING: The caller MUST explicitly call `torch_dev.synchronize()`
+     # before consuming these chunks to ensure data validity.
++
++    if dynamically_pinned:
++        # The temporaries pinned above are read by the async H2D launches
++        # through raw pointers, which torch's stream tracking cannot see.
++        # Returning drops the last reference to them, and the caching host
++        # allocator then hands that memory to the next caller while the
++        # copies are still in flight -- the next pin_memory() overwrites the
++        # bytes mid-transfer. The caller-side synchronize documented above
++        # cannot cover this: by then the temporaries are already gone.
++        # Only the dynamically pinned case pays this; caller-owned pinned
++        # chunks keep the fast path.
++        torch_dev.synchronize()
+diff --git a/lmcache/v1/multiprocess/transfer_context/worker_transfer.py b/lmcache/v1/multiprocess/transfer_context/worker_transfer.py
+index 0f0830c467ecf5ba0f3c57ad338e74dbd54ba77b..4dfe17a01c85c45cda318079c000678bea93bfd6 100644
+--- a/lmcache/v1/multiprocess/transfer_context/worker_transfer.py
++++ b/lmcache/v1/multiprocess/transfer_context/worker_transfer.py
+@@ -30,8 +30,10 @@ from lmcache.v1.multiprocess.protocols.engine import RegisterEngineDrivenContext
+ from lmcache.v1.multiprocess.transfer_context.base import (
+     EngineDrivenContext,
+     EngineDrivenContextMetadata,
++    PagedKVTransferWorkspace,
+     compute_kv_layout,
+     create_engine_driven_context,
++    create_paged_kv_transfer_workspace,
+     gather_paged_kv_to_cpu,
+     scatter_cpu_to_paged_kv,
+ )
+@@ -206,6 +208,7 @@ class _EngineDrivenWorkerGroup:
+     layout: EngineDrivenGroupLayout
+     layer_names: tuple[str, ...]
+     engine_kv_format: Any
++    transfer_workspace: PagedKVTransferWorkspace | None = None
+ 
+ 
+ def _validate_group_block_ids(
+@@ -804,6 +807,10 @@ class EngineDrivenTransferContext(TransferContext):
+         self._layout_hints: LayoutHints | None = None
+         self._engine_kv_format: Any = None
+         self._worker_groups: tuple[_EngineDrivenWorkerGroup, ...] = ()
++        # Synchronous transfers need one staging slot. Async subclasses set
++        # this to their maximum number of concurrent gather workers before
++        # register() creates the per-group transfer workspaces.
++        self._transfer_workspace_slot_count = 1
+ 
+     def _gather_group_payloads(
+         self,
+@@ -811,6 +818,7 @@ class EngineDrivenTransferContext(TransferContext):
+         block_ids: list[list[int]],
+         out_buffers: list[list[torch.Tensor]] | None = None,
+         group_chunk_indices: list[list[int]] | None = None,
++        transfer_workspace_slot: int = 0,
+     ) -> list[list[torch.Tensor]]:
+         """Gather every registered object group in protocol order."""
+         num_chunks = _validate_group_block_ids(self._worker_groups, block_ids)
+@@ -832,17 +840,25 @@ class EngineDrivenTransferContext(TransferContext):
+                 chunk_idx < 0 or chunk_idx >= num_chunks for chunk_idx in indices
+             ):
+                 raise ValueError(f"group {group_idx} has invalid chunk indices")
++            gather_kwargs: dict[str, Any] = {
++                "layout_hints": self._layout_hints,
++                "engine_kv_format": group.engine_kv_format,
++                "out": (out_buffers[group_idx] if out_buffers is not None else None),
++                "chunk_indices": indices,
++                "blocks_per_window": group.layout.blocks_per_window,
++                "group_idx": group.layout.object_group_id,
++            }
++            if group.transfer_workspace is not None:
++                gather_kwargs.update(
++                    transfer_workspace=group.transfer_workspace,
++                    transfer_workspace_slot=transfer_workspace_slot,
++                )
+             payloads.append(
+                 gather_paged_kv_to_cpu(
+                     {name: kv_caches[name] for name in group.layer_names},
+                     block_ids[group_idx],
+                     group.layout.blocks_per_chunk,
+-                    layout_hints=self._layout_hints,
+-                    engine_kv_format=group.engine_kv_format,
+-                    out=(out_buffers[group_idx] if out_buffers is not None else None),
+-                    chunk_indices=indices,
+-                    blocks_per_window=group.layout.blocks_per_window,
+-                    group_idx=group.layout.object_group_id,
++                    **gather_kwargs,
+                 )
+             )
+         return payloads
+@@ -1118,6 +1134,17 @@ class EngineDrivenTransferContext(TransferContext):
+                         layout=layout,
+                         layer_names=tuple(layer_names[idx] for idx in indices),
+                         engine_kv_format=group_format,
++                        transfer_workspace=(
++                            create_paged_kv_transfer_workspace(
++                                group_kv,
++                                max_block_ids=4 * blocks_per_window,
++                                num_slots=self._transfer_workspace_slot_count,
++                                layout_hints=layout_hints,
++                                engine_kv_format=group_format,
++                            )
++                            if get_device(list(group_kv.values())).type == "cuda"
++                            else None
++                        ),
+                     )
+                 )
+             self._worker_groups = tuple(worker_groups)
+@@ -1226,6 +1253,7 @@ class EngineDrivenTransferContext(TransferContext):
+         if self._worker_groups:
+             torch_dev.synchronize()
+             group_out_buffers: list[list[torch.Tensor]] | None = None
++            gather_started = False
+             prepared = False
+             try:
+                 group_result = self._engine_driven_context.prepare_store_grouped(
+@@ -1239,14 +1267,17 @@ class EngineDrivenTransferContext(TransferContext):
+                     group_future: MessagingFuture[bool] = MessagingFuture()
+                     group_future.set_result(True)
+                     return group_future
++                gather_started = True
+                 cpu_groups = self._gather_group_payloads(
+                     kv_caches,
+                     block_ids,
+                     out_buffers=group_out_buffers,
+                     group_chunk_indices=group_chunk_indices,
+                 )
+-                if group_out_buffers is not None:
+-                    torch_dev.synchronize()
++                # Both SHM and pickle transports consume data produced by an
++                # asynchronous device-to-host gather. Commit only after every
++                # group payload is complete.
++                torch_dev.synchronize()
+                 ok = self._engine_driven_context.commit_store_grouped(
+                     key, instance_id, cpu_groups
+                 )
+@@ -1254,9 +1285,10 @@ class EngineDrivenTransferContext(TransferContext):
+                     self._abort_store_safely(key, instance_id)
+             except Exception:
+                 logger.exception("Failed to store engine-driven hybrid chunks")
+-                if group_out_buffers is not None:
++                if gather_started:
+                     # A failed gather can leave asynchronous writes targeting
+-                    # SHM views. Drain them before the server frees the slots.
++                    # SHM views or temporary pickle buffers. Drain them before
++                    # either storage is released.
+                     torch_dev.synchronize()
+                 if prepared:
+                     self._abort_store_safely(key, instance_id)
+@@ -1267,6 +1299,7 @@ class EngineDrivenTransferContext(TransferContext):
+ 
+         torch_dev.synchronize()
+         out_buffers: list[torch.Tensor] | None = None
++        gather_started = False
+         prepared = False
+         try:
+             legacy_result = self._engine_driven_context.prepare_store(key, instance_id)
+@@ -1279,6 +1312,7 @@ class EngineDrivenTransferContext(TransferContext):
+                 future: MessagingFuture[bool] = MessagingFuture()
+                 future.set_result(True)
+                 return future
++            gather_started = True
+             cpu_chunks = gather_paged_kv_to_cpu(
+                 kv_caches,
+                 _single_group_block_ids(block_ids),
+@@ -1288,20 +1322,19 @@ class EngineDrivenTransferContext(TransferContext):
+                 out=out_buffers,
+                 chunk_indices=chunk_indices,
+             )
+-            if out_buffers is not None:
+-                # SHM path uses async device->CPU copies; complete them before commit.
+-                torch_dev.synchronize()
++            # Both SHM and pickle transports consume data produced by an
++            # asynchronous device-to-host gather.
++            torch_dev.synchronize()
+             ok = self._engine_driven_context.commit_store(key, instance_id, cpu_chunks)
+             if not ok:
+                 self._abort_store_safely(key, instance_id)
+         except Exception:
+             logger.exception("Failed to store engine-driven chunks")
+-            if out_buffers is not None:
++            if gather_started:
+                 torch_dev.synchronize()
+             if prepared:
+                 self._abort_store_safely(key, instance_id)
+             ok = False
+-
+         future = MessagingFuture()
+         future.set_result(ok)
+         return future
+diff --git a/tests/v1/distributed/test_fs_l2_adapter_keys.py b/tests/v1/distributed/test_fs_l2_adapter_keys.py
+index 9a83a2a550e1ed65378f6dac1106b983e1f76124..989a2b94802f8e10034bcf6ba2e4e9c02065019e 100644
+--- a/tests/v1/distributed/test_fs_l2_adapter_keys.py
++++ b/tests/v1/distributed/test_fs_l2_adapter_keys.py
+@@ -14,8 +14,10 @@ import pytest
+ # First Party
+ from lmcache.v1.distributed.api import ObjectKey
+ from lmcache.v1.distributed.l2_adapters.fs_l2_adapter import (
++    _bounded_relative_path_to_object_key,
+     _filename_to_object_key,
+     _object_key_to_filename,
++    _object_key_to_relative_path,
+ )
+ 
+ 
+@@ -114,6 +116,25 @@ class TestFilenameRoundtrip:
+         fn = f"llama@0x0000002a@0@deadbeef@{too_long_salt}.data"
+         assert _filename_to_object_key(fn) is None
+ 
++    def test_glm_long_key_uses_reversible_bounded_components(self):
++        """The production GLM identity supports a maximum-length tenant salt."""
++        key = ObjectKey(
++            chunk_hash=bytes.fromhex("70f8501b00e17eb724cd5eb68e21c012" * 2),
++            model_name=(
++                "/model/snapshots/378ca54585c46542bad1f3cb3ed0d73ae51cdb62"
++                "##lmcache-dcp-layout-v1-d4-interleave4"
++            ),
++            kv_rank=0x04010401,
++            object_group_id=7,
++            cache_salt="tenant-" + "s" * 121,
++        )
++
++        relative_path = _object_key_to_relative_path(key)
++
++        assert len(_object_key_to_filename(key).encode()) > 255
++        assert all(len(part.encode()) <= 200 for part in relative_path.parts)
++        assert _bounded_relative_path_to_object_key(relative_path) == key
++
+ 
+ class TestIpcKeyToObjectKeys:
+     """ipc_key_to_object_keys reads cache_salt from the ipc_key itself —
+@@ -225,7 +246,15 @@ class TestIpcKeyToObjectKeys:
+ 
+ 
+ class TestObjectKeyValidation:
+-    """``ObjectKey.__post_init__`` rejects invalid ``object_group_id``."""
++    """``ObjectKey.__post_init__`` rejects negative numeric identifiers."""
++
++    def test_negative_kv_rank_rejected(self):
++        with pytest.raises(ValueError, match="kv_rank"):
++            ObjectKey(
++                chunk_hash=b"\xde\xad\xbe\xef",
++                model_name="llama",
++                kv_rank=-1,
++            )
+ 
+     def test_negative_object_group_id_rejected(self):
+         with pytest.raises(ValueError, match="object_group_id"):
+diff --git a/tests/v1/distributed/test_fs_l2_adapter_persistence.py b/tests/v1/distributed/test_fs_l2_adapter_persistence.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..9d2710ef35bcd87df7a1789c311ed9eb3beb7e55
+--- /dev/null
++++ b/tests/v1/distributed/test_fs_l2_adapter_persistence.py
+@@ -0,0 +1,394 @@
++# SPDX-License-Identifier: Apache-2.0
++"""Persistence tests for the file-system L2 adapter."""
++
++# Standard
++from pathlib import Path
++from typing import cast
++from unittest.mock import patch
++import os
++import time
++
++# Third Party
++import pytest
++
++# First Party
++from lmcache.v1.distributed.api import MemoryLayoutDesc, ObjectKey
++from lmcache.v1.distributed.internal_api import L2StoreResult
++from lmcache.v1.distributed.l2_adapters.fs_l2_adapter import (
++    FSL2Adapter,
++    FSL2AdapterConfig,
++    _bounded_relative_path_to_object_key,
++    _object_key_to_relative_path,
++)
++from lmcache.v1.memory_management import MemoryObj
++
++
++class _Buffer:
++    """Minimal memory object used by FS adapter lifecycle tests."""
++
++    def __init__(self, data: bytes) -> None:
++        self._data = bytearray(data)
++
++    @property
++    def byte_array(self) -> memoryview:
++        """Return the writable byte view consumed by the adapter."""
++        return memoryview(self._data)
++
++
++def _memory_obj(data: bytes) -> MemoryObj:
++    return cast(MemoryObj, _Buffer(data))
++
++
++def _long_key(*, model_suffix: str = "", salt_suffix: str = "") -> ObjectKey:
++    return ObjectKey(
++        chunk_hash=b"\xde\xad\xbe\xef" * 8,
++        model_name="organization/" + "model-segment-" * 12 + model_suffix,
++        kv_rank=42,
++        object_group_id=7,
++        cache_salt="tenant-" + "s" * 120 + salt_suffix,
++    )
++
++
++def _wait_for_store(adapter: FSL2Adapter, key: ObjectKey, data: bytes) -> None:
++    task_id = adapter.submit_store_task([key], [_memory_obj(data)])
++    deadline = time.monotonic() + 5.0
++    while time.monotonic() < deadline:
++        result = adapter.pop_completed_store_tasks().get(task_id)
++        if result is not None:
++            assert result == L2StoreResult(True, len(data))
++            return
++        time.sleep(0.01)
++    pytest.fail("store task did not complete within 5s")
++
++
++def _wait_for_lookup(adapter: FSL2Adapter, key: ObjectKey) -> bool:
++    task_id = adapter.submit_lookup_and_lock_task(
++        [key], {0: MemoryLayoutDesc(shapes=[], dtypes=[])}
++    )
++    deadline = time.monotonic() + 5.0
++    while time.monotonic() < deadline:
++        result = adapter.query_lookup_and_lock_result(task_id)
++        if result is not None:
++            return result.test(0)
++        time.sleep(0.01)
++    raise AssertionError("lookup task did not complete within 5s")
++
++
++def _wait_for_load(adapter: FSL2Adapter, key: ObjectKey, size: int) -> bytes:
++    destination = _memory_obj(bytes(size))
++    task_id = adapter.submit_load_task([key], [destination])
++    deadline = time.monotonic() + 5.0
++    while time.monotonic() < deadline:
++        result = adapter.query_load_result(task_id)
++        if result is not None:
++            assert result.test(0)
++            return bytes(destination.byte_array)
++        time.sleep(0.01)
++    raise AssertionError("load task did not complete within 5s")
++
++
++def test_long_key_survives_restart(tmp_path: Path) -> None:
++    """An oversized legacy name remains usable across adapter restarts."""
++    key = _long_key(salt_suffix="a")
++    legacy_filename = (
++        "organization-SEP-"
++        + "model-segment-" * 12
++        + "@0x0000002a@7@"
++        + "deadbeef" * 8
++        + "@tenant-"
++        + "s" * 120
++        + "a.data"
++    )
++    name_max = os.pathconf(tmp_path, "PC_NAME_MAX")
++    assert len(os.fsencode(legacy_filename)) > name_max
++    payload = b"persistent payload"
++
++    first = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        _wait_for_store(first, key, payload)
++        assert _wait_for_lookup(first, key)
++        assert _wait_for_load(first, key, len(payload)) == payload
++    finally:
++        first.close()
++
++    second = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        assert _wait_for_lookup(second, key)
++        assert _wait_for_load(second, key, len(payload)) == payload
++        second.delete([key])
++        assert not _wait_for_lookup(second, key)
++    finally:
++        second.close()
++
++
++def test_short_legacy_filename_remains_readable(tmp_path: Path) -> None:
++    """Representable keys retain and discover their exact legacy filename."""
++    key = ObjectKey(
++        chunk_hash=b"\xde\xad\xbe\xef",
++        model_name="meta-llama/Llama-3",
++        kv_rank=42,
++        object_group_id=7,
++        cache_salt="tenant-a",
++    )
++    legacy_filename = "meta-llama-SEP-Llama-3@0x0000002a@7@deadbeef@tenant-a.data"
++    payload = b"legacy payload"
++    (tmp_path / legacy_filename).write_bytes(payload)
++
++    adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        assert _wait_for_lookup(adapter, key)
++        assert _wait_for_load(adapter, key, len(payload)) == payload
++    finally:
++        adapter.close()
++
++
++def test_distinct_oversized_keys_use_distinct_stable_files(tmp_path: Path) -> None:
++    """Bounded paths preserve key fields that differ near their ends."""
++    keys = [
++        _long_key(model_suffix="a", salt_suffix="a"),
++        _long_key(model_suffix="b", salt_suffix="a"),
++        _long_key(model_suffix="a", salt_suffix="b"),
++    ]
++    adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        payloads = (b"base", b"model differs", b"salt differs")
++        for key, payload in zip(keys, payloads, strict=True):
++            _wait_for_store(adapter, key, payload)
++        relative_paths = {
++            path.relative_to(tmp_path) for path in tmp_path.rglob("*.data")
++        }
++        assert relative_paths == {_object_key_to_relative_path(key) for key in keys}
++        name_max = os.pathconf(tmp_path, "PC_NAME_MAX")
++        assert all(
++            len(os.fsencode(component)) <= name_max
++            for path in relative_paths
++            for component in path.parts
++        )
++        assert {
++            _bounded_relative_path_to_object_key(path) for path in relative_paths
++        } == set(keys)
++    finally:
++        adapter.close()
++
++    restarted = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        assert [_wait_for_lookup(restarted, key) for key in keys] == [True] * 3
++        assert {
++            path.relative_to(tmp_path) for path in tmp_path.rglob("*.data")
++        } == relative_paths
++    finally:
++        restarted.close()
++
++
++def test_oversized_chunk_hash_uses_bounded_components(tmp_path: Path) -> None:
++    """A valid long chunk hash never creates an oversized path component."""
++    key = ObjectKey(
++        chunk_hash=bytes(range(128)),
++        model_name="org/model",
++        kv_rank=42,
++        object_group_id=7,
++        cache_salt="tenant-a",
++    )
++    relative_path = _object_key_to_relative_path(key)
++    name_max = os.pathconf(tmp_path, "PC_NAME_MAX")
++    assert all(
++        len(os.fsencode(component)) <= name_max for component in relative_path.parts
++    )
++    assert _bounded_relative_path_to_object_key(relative_path) == key
++
++    payload = b"long-hash payload"
++    adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        _wait_for_store(adapter, key, payload)
++        assert _wait_for_load(adapter, key, len(payload)) == payload
++    finally:
++        adapter.close()
++
++
++def test_oversized_numeric_fields_use_bounded_components(tmp_path: Path) -> None:
++    """Object rank and group integers cannot exceed the component limit."""
++    key = ObjectKey(
++        chunk_hash=b"hash",
++        model_name="org/model",
++        kv_rank=1 << 4096,
++        object_group_id=1 << 4096,
++        cache_salt="tenant-a",
++    )
++    relative_path = _object_key_to_relative_path(key)
++    name_max = os.pathconf(tmp_path, "PC_NAME_MAX")
++    assert all(
++        len(os.fsencode(component)) <= name_max for component in relative_path.parts
++    )
++    assert _bounded_relative_path_to_object_key(relative_path) == key
++
++
++def test_empty_chunk_hash_round_trips_through_split_layout(tmp_path: Path) -> None:
++    """A split bounded path preserves an empty chunk hash across restart."""
++    key = ObjectKey(
++        chunk_hash=b"",
++        model_name="org/model",
++        kv_rank=1 << 4096,
++        object_group_id=7,
++        cache_salt="tenant-a",
++    )
++    relative_path = _object_key_to_relative_path(key)
++
++    assert "h0" in relative_path.parts
++    assert _bounded_relative_path_to_object_key(relative_path) == key
++
++    payload = b"empty-hash payload"
++    adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        _wait_for_store(adapter, key, payload)
++        assert _wait_for_load(adapter, key, len(payload)) == payload
++    finally:
++        adapter.close()
++
++
++def test_store_rejects_object_path_at_path_max(tmp_path: Path) -> None:
++    """An unrepresentable complete path fails before creating directories."""
++    path_max = os.pathconf(tmp_path, "PC_PATH_MAX")
++    if path_max < 0:
++        pytest.skip("filesystem reports no fixed PC_PATH_MAX")
++    key = ObjectKey(
++        chunk_hash=b"hash",
++        model_name="m" * (path_max // 2 + 128),
++        kv_rank=0,
++    )
++    full_path = tmp_path / _object_key_to_relative_path(key)
++    assert len(os.fsencode(full_path)) >= path_max
++
++    adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        task_id = adapter.submit_store_task([key], [_memory_obj(b"payload")])
++        deadline = time.monotonic() + 5.0
++        while time.monotonic() < deadline:
++            result = adapter.pop_completed_store_tasks().get(task_id)
++            if result is not None:
++                assert result == L2StoreResult(False, 0)
++                break
++            time.sleep(0.01)
++        else:
++            pytest.fail("rejected store did not complete within 5s")
++        assert list(tmp_path.rglob("*.data")) == []
++        assert not (tmp_path / ".lmcache-objects-v1").exists()
++    finally:
++        adapter.close()
++
++
++def test_python_adapter_reads_and_deletes_oversized_legacy_file(
++    tmp_path: Path,
++) -> None:
++    """Canonical bounded paths retain the representable flat-file fallback."""
++    key = ObjectKey(
++        chunk_hash=b"legacy-hash",
++        model_name="org/model-with-a-long-name",
++        kv_rank=42,
++        object_group_id=7,
++        cache_salt="tenant-a",
++    )
++    legacy_path = tmp_path / (
++        "org-SEP-model-with-a-long-name@0x0000002a@7@"
++        "6c65676163792d68617368@tenant-a.data"
++    )
++    payload = b"legacy payload"
++    legacy_path.write_bytes(payload)
++
++    module = "lmcache.v1.distributed.l2_adapters.fs_l2_adapter"
++    with patch(f"{module}._LEGACY_FILENAME_MAX_BYTES", 32):
++        assert _object_key_to_relative_path(key).parent != Path(".")
++        adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++        try:
++            assert _wait_for_lookup(adapter, key)
++            assert _wait_for_load(adapter, key, len(payload)) == payload
++
++            task_id = adapter.submit_store_task(
++                [key], [_memory_obj(b"replacement must not be stored")]
++            )
++            deadline = time.monotonic() + 5.0
++            while time.monotonic() < deadline:
++                result = adapter.pop_completed_store_tasks().get(task_id)
++                if result is not None:
++                    assert result == L2StoreResult(True, 0)
++                    break
++                time.sleep(0.01)
++            else:
++                pytest.fail("duplicate store did not complete within 5s")
++
++            assert legacy_path.read_bytes() == payload
++            adapter.delete([key])
++            deadline = time.monotonic() + 5.0
++            while legacy_path.exists() and time.monotonic() < deadline:
++                time.sleep(0.01)
++            assert not legacy_path.exists()
++        finally:
++            adapter.close()
++
++
++def test_path_does_not_depend_on_local_name_max(tmp_path: Path) -> None:
++    """The same oversized key maps to one path on all supported hosts."""
++    key = _long_key(salt_suffix="a")
++    relative_paths = []
++
++    real_pathconf = os.pathconf
++    for dirname, name_max in (("standard", 255), ("large", 512)):
++        base_path = tmp_path / dirname
++        base_path.mkdir()
++        with patch(
++            "os.pathconf",
++            side_effect=lambda path, name, name_max=name_max: (
++                name_max if name == "PC_NAME_MAX" else real_pathconf(path, name)
++            ),
++        ):
++            adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(base_path)))
++        try:
++            _wait_for_store(adapter, key, b"payload")
++            relative_paths.append(
++                next(base_path.rglob("*.data")).relative_to(base_path)
++            )
++        finally:
++            adapter.close()
++
++    assert relative_paths[0] == relative_paths[1]
++    assert _bounded_relative_path_to_object_key(relative_paths[0]) == key
++
++
++def test_oversized_surrogateescaped_key_can_be_stored(tmp_path: Path) -> None:
++    """Bounded addressing accepts model strings restored from FS bytes."""
++    escaped_byte = b"\x80".decode(errors="surrogateescape")
++    key = _long_key(model_suffix=escaped_byte, salt_suffix="a")
++    adapter = FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
++    try:
++        _wait_for_store(adapter, key, b"payload")
++        assert _wait_for_lookup(adapter, key)
++    finally:
++        adapter.close()
++
++
++def test_relative_tmp_dir_stores_oversized_key(tmp_path: Path) -> None:
++    """Oversized keys also work when temporary files use a subdirectory."""
++    key = _long_key(salt_suffix="a")
++    adapter = FSL2Adapter(
++        FSL2AdapterConfig(base_path=str(tmp_path), relative_tmp_dir="tmp")
++    )
++    try:
++        _wait_for_store(adapter, key, b"payload")
++        assert _wait_for_lookup(adapter, key)
++        assert list((tmp_path / "tmp").iterdir()) == []
++        data_files = list(tmp_path.rglob("*.data"))
++        assert len(data_files) == 1
++        assert all(
++            len(os.fsencode(component)) <= os.pathconf(tmp_path, "PC_NAME_MAX")
++            for component in data_files[0].relative_to(tmp_path).parts
++        )
++    finally:
++        adapter.close()
++
++
++def test_rejects_filesystem_below_protocol_limit(tmp_path: Path) -> None:
++    """Initialization rejects limits below the filename protocol limit."""
++    with (
++        patch("os.pathconf", return_value=254),
++        pytest.raises(ValueError, match=r"PC_NAME_MAX >= 255, got 254"),
++    ):
++        FSL2Adapter(FSL2AdapterConfig(base_path=str(tmp_path)))
+diff --git a/tests/v1/distributed/test_fs_native_startup_scan.py b/tests/v1/distributed/test_fs_native_startup_scan.py
+index e6bd34d9d76113f223da0e7b0936306c858ff01b..4637bc530d47941fa6ab330358d7f9e2b7d2491e 100644
+--- a/tests/v1/distributed/test_fs_native_startup_scan.py
++++ b/tests/v1/distributed/test_fs_native_startup_scan.py
+@@ -12,6 +12,7 @@ import pytest
+ from lmcache.v1.distributed.api import ObjectKey
+ from lmcache.v1.distributed.l2_adapters.fs_l2_adapter import (
+     _object_key_to_filename,
++    _object_key_to_relative_path,
+ )
+ from lmcache.v1.distributed.l2_adapters.fs_native_l2_adapter import (
+     _scan_existing_key_sizes,
+@@ -65,6 +66,42 @@ def test_scan_tiebreaks_equal_mtime_by_filename(tmp_path) -> None:
+     assert list(inventory) == expected
+ 
+ 
++def test_scan_inventories_bounded_long_key(tmp_path) -> None:
++    """Restart accounting decodes a long model identity and 128-byte salt."""
++    key = ObjectKey(
++        chunk_hash=bytes.fromhex("70f8501b00e17eb724cd5eb68e21c012" * 2),
++        model_name=(
++            "/model/snapshots/378ca54585c46542bad1f3cb3ed0d73ae51cdb62"
++            "##lmcache-dcp-layout-v1-d4-interleave4"
++        ),
++        kv_rank=0x04010401,
++        object_group_id=7,
++        cache_salt="tenant-" + "s" * 121,
++    )
++    path = tmp_path / _object_key_to_relative_path(key)
++    path.parent.mkdir(parents=True)
++    path.write_bytes(b"bounded")
++
++    assert _scan_existing_key_sizes(str(tmp_path)) == {key: 7}
++
++
++def test_scan_inventories_split_path_with_empty_hash(tmp_path) -> None:
++    """Restart inventory decodes the explicit zero-component hash field."""
++    key = ObjectKey(
++        chunk_hash=b"",
++        model_name="org/model",
++        kv_rank=1 << 4096,
++        object_group_id=7,
++        cache_salt="tenant-a",
++    )
++    path = tmp_path / _object_key_to_relative_path(key)
++    assert "h0" in path.parts
++    path.parent.mkdir(parents=True)
++    path.write_bytes(b"bounded")
++
++    assert _scan_existing_key_sizes(str(tmp_path)) == {key: 7}
++
++
+ def test_scan_missing_directory_is_empty(tmp_path) -> None:
+     assert _scan_existing_key_sizes(str(tmp_path / "not-created")) == {}
+ 
+@@ -119,6 +156,30 @@ def test_scan_skips_entry_removed_before_stat(monkeypatch) -> None:
+     assert _scan_existing_key_sizes("/cache") == {}
+ 
+ 
++def test_scan_fails_closed_when_bounded_root_cannot_be_inspected(
++    monkeypatch,
++) -> None:
++    """A bounded-tree stat error cannot silently reduce restart capacity."""
++    monkeypatch.setattr(os, "scandir", lambda _path: _FakeScandir([]))
++    real_stat = os.stat
++
++    def fail_bounded_root(path, *, follow_symlinks=True):
++        if str(path).endswith(".lmcache-objects-v1"):
++            raise PermissionError("denied")
++        return real_stat(path, follow_symlinks=follow_symlinks)
++
++    monkeypatch.setattr(os, "stat", fail_bounded_root)
++    with pytest.raises(RuntimeError, match="bounded cache root"):
++        _scan_existing_key_sizes("/cache")
++
++
++def test_scan_rejects_non_directory_bounded_root(tmp_path) -> None:
++    """A conflicting bounded-root file fails before native client startup."""
++    (tmp_path / ".lmcache-objects-v1").write_bytes(b"conflict")
++    with pytest.raises(RuntimeError, match="not a directory"):
++        _scan_existing_key_sizes(str(tmp_path))
++
++
+ def test_scan_rejects_duplicate_decoded_keys(tmp_path) -> None:
+     key = _key(10)
+     canonical = _object_key_to_filename(key)
+diff --git a/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py b/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py
+index bb17682b1dcc447cb07138633704b1bd26197e99..7ffd5bd869f0b21659c158aa2bea05b76565a036 100644
+--- a/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py
++++ b/tests/v1/multiprocess/test_async_engine_driven_transfer_context.py
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: Apache-2.0
+ # Standard
+ from contextlib import nullcontext
+-from dataclasses import dataclass
++from dataclasses import dataclass, replace
+ from types import SimpleNamespace
+ from typing import Callable
+ from unittest.mock import MagicMock
+@@ -21,6 +21,7 @@ from lmcache.v1.multiprocess.transfer_context import (
+ from lmcache.v1.multiprocess.transfer_context.async_engine_driven import (
+     AsyncEngineDrivenTransferContext,
+ )
++from lmcache.v1.multiprocess.transfer_context.base import PagedKVTransferWorkspace
+ from lmcache.v1.multiprocess.transfer_context.worker_transfer import (
+     EngineDrivenTransferContext,
+ )
+@@ -162,7 +163,7 @@ def _new_context(
+     return ctx
+ 
+ 
+-def _install_two_group_state(ctx: AsyncEngineDrivenTransferContext) -> None:
++def _install_two_group_state(ctx: EngineDrivenTransferContext) -> None:
+     """Install two minimal hybrid-KV group descriptors on a test context."""
+     ctx._worker_groups = (
+         worker_transfer._EngineDrivenWorkerGroup(
+@@ -603,6 +604,97 @@ def test_multigroup_shm_store_runs_prepare_and_gather_in_background(
+     ctx.close()
+ 
+ 
++def test_multigroup_gather_passes_reserved_workspace_slot(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """Registered CUDA metadata receives the store's exclusive staging slot."""
++    gather_calls: list[dict[str, object]] = []
++
++    def _gather(
++        _kv_caches: dict[str, torch.Tensor],
++        _block_ids: list[int],
++        _blocks_in_chunk: int,
++        **kwargs: object,
++    ) -> list[torch.Tensor]:
++        gather_calls.append(kwargs)
++        return [torch.zeros(1)]
++
++    monkeypatch.setattr(worker_transfer, "gather_paged_kv_to_cpu", _gather)
++    ctx = EngineDrivenTransferContext()
++    _install_two_group_state(ctx)
++    workspace = PagedKVTransferWorkspace(
++        paged_buffer_ptrs=torch.zeros(1, dtype=torch.int64),
++        block_ids_host=tuple(torch.zeros(4, dtype=torch.int64) for _ in range(3)),
++        block_ids_device=tuple(torch.zeros(4, dtype=torch.int64) for _ in range(3)),
++    )
++    ctx._worker_groups = (  # noqa: SLF001 - focused transfer-context test
++        replace(ctx._worker_groups[0], transfer_workspace=workspace),
++        ctx._worker_groups[1],
++    )
++
++    ctx._gather_group_payloads(  # noqa: SLF001 - focused transfer-context test
++        {"layer_0": torch.zeros(1), "layer_1": torch.zeros(1)},
++        [[10], [20, 21]],
++        transfer_workspace_slot=2,
++    )
++
++    assert gather_calls[0]["transfer_workspace"] is workspace
++    assert gather_calls[0]["transfer_workspace_slot"] == 2
++    assert "transfer_workspace" not in gather_calls[1]
++    assert "transfer_workspace_slot" not in gather_calls[1]
++
++
++def test_concurrent_multigroup_stores_hold_distinct_workspace_slots(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """A staging slot is not reused while its CUDA gather remains in flight."""
++    gather_gate = threading.Event()
++    monkeypatch.setattr(async_engine_driven, "torch_dev", _FakeTorchDev(gather_gate))
++    ctx = AsyncEngineDrivenTransferContext(commit_workers=3)
++    ctx._engine_driven_context = _FakeGroupedStoreContext(  # type: ignore[assignment]
++        commit_impl=lambda chunks: chunks == [],
++        prepare_result=(
++            [[torch.zeros(1)], [torch.zeros(1)]],
++            [[0], [0]],
++        ),
++    )
++    _install_two_group_state(ctx)
++    observed_slots: list[int] = []
++    observed_lock = threading.Lock()
++
++    def _gather_groups(
++        *_args: object, transfer_workspace_slot: int, **_kwargs: object
++    ) -> list[list[torch.Tensor]]:
++        with observed_lock:
++            observed_slots.append(transfer_workspace_slot)
++        return [[torch.zeros(1)], [torch.zeros(1)]]
++
++    monkeypatch.setattr(ctx, "_gather_group_payloads", _gather_groups)
++    futures = [
++        ctx.submit_store(
++            f"hybrid-{idx}",
++            object(),
++            1,
++            {"layer_0": torch.zeros(1), "layer_1": torch.zeros(1)},
++            [[10], [20, 21]],
++            _FakeEvent(gather_gate),
++            1,
++        )
++        for idx in range(3)
++    ]
++
++    deadline = time.monotonic() + 1
++    while len(observed_slots) < 3 and time.monotonic() < deadline:
++        time.sleep(0.001)
++    assert sorted(observed_slots) == [0, 1, 2]
++    assert ctx._transfer_workspace_slots.empty()  # noqa: SLF001
++
++    gather_gate.set()
++    assert all(future.result(timeout=1) is True for future in futures)
++    assert ctx._transfer_workspace_slots.qsize() == 3  # noqa: SLF001
++    ctx.close()
++
++
+ def test_multigroup_pickle_store_commits_group_major_payload_in_background(
+     monkeypatch: pytest.MonkeyPatch,
+ ) -> None:
+diff --git a/tests/v1/multiprocess/test_engine_driven_async_copy_lifetime.py b/tests/v1/multiprocess/test_engine_driven_async_copy_lifetime.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..a873fee047bb794f74c5fa840146bc54e358dade
+--- /dev/null
++++ b/tests/v1/multiprocess/test_engine_driven_async_copy_lifetime.py
+@@ -0,0 +1,122 @@
++# SPDX-License-Identifier: Apache-2.0
++"""Async device<->CPU copies must complete before their buffers are reused.
++
++Both engine-driven paths launch async copies and then hand the buffers to
++something that reads them. Two places got this wrong, and both failed
++silently: the KV was already committed or already scattered, so the only
++symptom was corrupted content much later.
++
++These tests assert the ordering contract without a GPU, so they run in the
++CPU-only unit CI. The hardware reproductions live alongside them in
++``test_engine_driven_transfer.py`` and skip without CUDA.
++"""
++
++# Standard
++from typing import cast
++from unittest.mock import MagicMock, patch
++
++# Third Party
++import torch
++
++
++def test_scatter_syncs_before_releasing_dynamically_pinned_chunks() -> None:
++    """Unpinned input must be synced before scatter returns.
++
++    ``scatter_cpu_to_paged_kv`` pins unpinned chunks into temporaries and
++    launches async H2D reads on them through raw pointers, which torch's
++    stream tracking cannot see. Returning drops the last reference, so the
++    caching host allocator can hand that memory to the next caller while the
++    copies are in flight. The documented caller-side synchronize cannot cover
++    it -- by then the temporaries are gone -- so scatter must sync itself.
++    """
++    # First Party
++    from lmcache.v1.multiprocess.transfer_context import base
++
++    kv = {f"layer_{i}": torch.zeros(2, 4, 4, 2, 8) for i in range(2)}
++
++    # Mock chunks, not real tensors: pin_memory() needs an accelerator, so the
++    # ptr-only branch cannot execute for real on the CPU-only unit CI. What we
++    # are pinning down is the ordering contract, not the copy itself.
++    def _unpinned_chunk() -> MagicMock:
++        c = MagicMock()
++        c.is_pinned.return_value = False
++        c.pin_memory.return_value = c
++        c.data_ptr.return_value = 0
++        return c
++
++    chunks = [_unpinned_chunk()]
++
++    # Pin the ptr-only path: only that branch pins temporaries, and whether the
++    # compiled op takes tensors varies by build. scatter imports device_ops
++    # inside the function, so patch it at source.
++    with (
++        patch.object(base, "_LMC_OPS_BLOCK_TRANSFER_ACCEPTS_TENSOR", False),
++        patch.object(base, "torch_dev") as dev,
++        patch("lmcache.device_ops") as ops,
++    ):
++        # cast: the mocks stand in for tensors on purpose (see above).
++        base.scatter_cpu_to_paged_kv(
++            kv, list(range(4)), cast(list[torch.Tensor], chunks), 4
++        )
++        assert ops.multi_layer_block_kv_transfer.called, (
++            "fixture must reach the async H2D launches"
++        )
++        assert dev.synchronize.called, (
++            "scatter must complete async H2D before releasing the temporaries "
++            "it pinned; otherwise the host allocator reuses them mid-copy"
++        )
++
++
++def test_pickle_store_syncs_before_commit_serializes() -> None:
++    """The pickle path must sync before commit_store reads the buffers.
++
++    Gather issues async device->CPU copies into fresh buffers, and the pickle
++    transport serializes them immediately in ``commit_store``. Syncing only
++    when ``out_buffers`` is given (the SHM path) leaves pickle serializing a
++    buffer that is still being written.
++    """
++    # First Party
++    from lmcache.v1.multiprocess.transfer_context import worker_transfer
++
++    order: list[str] = []
++    ctx = worker_transfer.EngineDrivenTransferContext()
++    ctx._engine_driven_context = MagicMock()
++    ctx._engine_driven_context.prepare_store.return_value = None  # pickle mode
++
++    def _commit(*_a: object, **_k: object) -> bool:
++        order.append("commit")
++        return True
++
++    ctx._engine_driven_context.commit_store.side_effect = _commit
++    ctx._layout_hints = None
++    ctx._engine_kv_format = None
++
++    def _gather(*_a: object, **_k: object) -> list[torch.Tensor]:
++        order.append("gather")
++        return [torch.zeros(1)]
++
++    with (
++        patch.object(worker_transfer, "torch_dev") as dev,
++        patch.object(worker_transfer, "gather_paged_kv_to_cpu", side_effect=_gather),
++    ):
++        dev.synchronize.side_effect = lambda *a, **k: order.append("sync")
++        ctx.submit_store(
++            "req",
++            MagicMock(),  # key
++            1,  # instance_id
++            {"layer_0": torch.zeros(2, 4, 4, 2, 8)},
++            [[0, 1, 2, 3]],
++            MagicMock(),  # event (unused on this transport)
++            4,  # blocks_in_chunk
++        )
++
++    # A sync must fall BETWEEN gather and commit. submit_store also syncs
++    # before prepare_store, so merely finding a "sync" proves nothing -- that
++    # earlier one is why guarding this on out_buffers went unnoticed.
++    gathered, committed = order.index("gather"), order.index("commit")
++    assert any(
++        i for i, step in enumerate(order) if step == "sync" and gathered < i < committed
++    ), (
++        "pickle store must synchronize after gather and before commit_store "
++        f"serializes the buffers, got {order}"
++    )
+diff --git a/tests/v1/multiprocess/test_engine_driven_transfer.py b/tests/v1/multiprocess/test_engine_driven_transfer.py
+index 2a05fc0fc18888b217083a5effb64e4977cfe27a..0e877ed5c754048e0ead1f054ef59bdfaabc1f31 100644
+--- a/tests/v1/multiprocess/test_engine_driven_transfer.py
++++ b/tests/v1/multiprocess/test_engine_driven_transfer.py
+@@ -1871,6 +1871,39 @@ def test_engine_context_shm_pool_info(
+     assert ctx.shm_pool_info == expected_pool_info
+ 
+ 
++def test_engine_driven_status_reports_transfer_pool(
++    stub_lmcache_native: Any,
++) -> None:
++    """Status distinguishes the direct SHM transport from pickle fallback."""
++    # First Party
++    from lmcache.v1.multiprocess.engine_context import MPCacheServerContext
++    from lmcache.v1.multiprocess.modules.engine_driven_transfer import (
++        EngineDrivenTransferModule,
++    )
++
++    with patch(
++        "lmcache.v1.distributed.config.current_device_spec",
++        MagicMock(is_pin_supported=True),
++    ):
++        config = _make_storage_manager_config(
++            shm_name="ds4-transfer", pool_size=4096, use_lazy=False
++        )
++
++    with (
++        patch("lmcache.v1.multiprocess.engine_context.StorageManager"),
++        patch("lmcache.v1.multiprocess.engine_context.TokenHasher"),
++        patch("lmcache.v1.multiprocess.engine_context.SessionManager"),
++        patch("lmcache.v1.multiprocess.engine_context.get_event_bus"),
++    ):
++        ctx = MPCacheServerContext(storage_manager_config=config, chunk_size=16)
++
++    status = EngineDrivenTransferModule(ctx).report_status()
++    assert status["engine_driven_shm_pool"] == {
++        "shm_name": "lmcache_l1_pool_ds4-transfer",
++        "pool_size": 4096,
++    }
++
++
+ def test_server_register_and_find_non_cuda_context_layout(
+     stub_lmcache_native: Any,
+     server_module_factory: ServerModuleFactory,
+diff --git a/tests/v1/multiprocess/test_shm_capacity.py b/tests/v1/multiprocess/test_shm_capacity.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..b0d134715ab1b7aa99e2857c817d7302a57f05cf
+--- /dev/null
++++ b/tests/v1/multiprocess/test_shm_capacity.py
+@@ -0,0 +1,119 @@
++# SPDX-License-Identifier: Apache-2.0
++"""Shared-memory capacity accounting for engine-driven cache restarts."""
++
++# Standard
++from types import SimpleNamespace
++from typing import cast
++
++# Third Party
++import pytest
++
++# First Party
++from lmcache.v1.distributed.config import L1MemoryManagerConfig
++from lmcache.v1.multiprocess import server
++
++
++@pytest.mark.parametrize(
++    ("configured_name", "expected_path"),
++    [
++        ("restart-test", "/dev/shm/lmcache_l1_pool_restart-test"),
++        (
++            "lmcache_l1_pool_restart-test",
++            "/dev/shm/lmcache_l1_pool_restart-test",
++        ),
++        (
++            "/lmcache_l1_pool_restart-test",
++            "/dev/shm/lmcache_l1_pool_restart-test",
++        ),
++    ],
++)
++def test_unlink_configured_l1_shm_uses_allocator_name(
++    monkeypatch: pytest.MonkeyPatch,
++    configured_name: str,
++    expected_path: str,
++) -> None:
++    """Capacity checks remove the segment that the allocator will replace."""
++    observed: list[str] = []
++
++    def _unlink(shm_name: str) -> None:
++        observed.append(shm_name)
++
++    monkeypatch.setattr(server, "_unlink_stale_shm", _unlink)
++
++    server._unlink_configured_l1_shm(configured_name)
++    assert observed == [expected_path.removeprefix("/dev/shm/")]
++
++
++@pytest.mark.parametrize("configured_name", ["nested/pool", "nested\\pool"])
++def test_unlink_configured_l1_shm_passes_path_validation_to_allocator(
++    monkeypatch: pytest.MonkeyPatch,
++    configured_name: str,
++) -> None:
++    """The allocator cleanup remains the authority for name validation."""
++    observed: list[str] = []
++
++    monkeypatch.setattr(server, "_unlink_stale_shm", observed.append)
++
++    server._unlink_configured_l1_shm(configured_name)
++    assert observed == [f"lmcache_l1_pool_{configured_name}"]
++
++
++def test_available_l1_shm_bytes_is_measured_after_cleanup(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    """The capacity value reflects tmpfs state after stale-pool cleanup."""
++    calls: list[str] = []
++    monkeypatch.setattr(
++        server,
++        "_unlink_configured_l1_shm",
++        lambda shm_name: calls.append(f"unlink:{shm_name}"),
++    )
++
++    def _disk_usage(path: str) -> SimpleNamespace:
++        calls.append(f"usage:{path}")
++        return SimpleNamespace(free=70 * 1024**3)
++
++    monkeypatch.setattr(
++        server.shutil,
++        "disk_usage",
++        _disk_usage,
++    )
++
++    available = server._available_l1_shm_bytes_after_cleanup("restart-test")
++
++    assert available == 70 * 1024**3
++    assert calls == ["unlink:restart-test", "usage:/dev/shm"]
++
++
++@pytest.mark.parametrize(
++    ("use_lazy", "devdax_path"),
++    [(True, None), (False, "/dev/dax0.0")],
++)
++def test_non_posix_l1_modes_do_not_unlink_named_shm(
++    monkeypatch: pytest.MonkeyPatch,
++    use_lazy: bool,
++    devdax_path: str | None,
++) -> None:
++    """Restart cleanup is limited to configurations that replace POSIX SHM."""
++    calls: list[str] = []
++
++    def _available(shm_name: str) -> int:
++        calls.append(shm_name)
++        return 1
++
++    monkeypatch.setattr(
++        server,
++        "_available_l1_shm_bytes_after_cleanup",
++        _available,
++    )
++    mem_cfg = cast(
++        L1MemoryManagerConfig,
++        SimpleNamespace(
++            shm_name="pool-owned-by-another-process",
++            use_lazy=use_lazy,
++            devdax_path=devdax_path,
++        ),
++    )
++
++    assert server._available_configured_l1_shm_bytes(mem_cfg) is None
++    assert calls == []
+diff --git a/tests/v1/storage_backend/test_fs_native_connector.py b/tests/v1/storage_backend/test_fs_native_connector.py
+index e9b8d10ea132c69a1a02e8f875003cd0c28685eb..b3ede6c992c0d964b04a5848c48f9360c29124b6 100644
+--- a/tests/v1/storage_backend/test_fs_native_connector.py
++++ b/tests/v1/storage_backend/test_fs_native_connector.py
+@@ -17,9 +17,11 @@ from lmcache.v1.distributed.config import EvictionConfig
+ from lmcache.v1.distributed.l2_adapters import create_l2_adapter
+ from lmcache.v1.distributed.l2_adapters.fs_l2_adapter import (
+     _object_key_to_filename,
++    _object_key_to_relative_path,
+ )
+ from lmcache.v1.distributed.l2_adapters.fs_native_l2_adapter import (
+     FSNativeL2AdapterConfig,
++    _scan_existing_key_sizes,
+ )
+ from lmcache.v1.distributed.l2_adapters.native_connector_l2_adapter import (
+     NativeConnectorL2Adapter,
+@@ -170,6 +172,166 @@ def test_current_object_group_keys_match_python_filename(
+         client.close()
+ 
+ 
++def test_native_connector_rejects_negative_kv_rank(tmp_path) -> None:
++    """Native wire input enforces the non-negative ObjectKey rank invariant."""
++    LMCacheFSClient = _import_fs_client()
++    client = LMCacheFSClient(str(tmp_path), 1)
++    try:
++        completion = _submit_and_wait(
++            client,
++            "submit_batch_set",
++            "model@-0000001@0@78",
++            memoryview(bytearray(b"payload")),
++        )
++        assert completion[1] is False
++        assert "kv_rank must be non-negative" in completion[2]
++        assert list(tmp_path.rglob("*.data")) == []
++    finally:
++        client.close()
++
++
++def test_oversized_glm_key_survives_native_restart(tmp_path) -> None:
++    """Native FS stores and inventories the maximum supported tenant salt."""
++    LMCacheFSClient = _import_fs_client()
++    key = ObjectKey(
++        chunk_hash=bytes.fromhex("70f8501b00e17eb724cd5eb68e21c012" * 2),
++        model_name=(
++            "/model/snapshots/378ca54585c46542bad1f3cb3ed0d73ae51cdb62"
++            "##lmcache-dcp-layout-v1-d4-interleave4"
++        ),
++        kv_rank=0x04010401,
++        object_group_id=7,
++        cache_salt="tenant-" + "s" * 121,
++    )
++    wire_key = _object_key_to_string(key)
++    payload = bytearray(b"persistent-native-payload")
++    expected_path = tmp_path / _object_key_to_relative_path(key)
++
++    writer = LMCacheFSClient(str(tmp_path), 1)
++    try:
++        completion = _submit_and_wait(
++            writer, "submit_batch_set", wire_key, memoryview(payload)
++        )
++        assert completion[1], completion[2]
++    finally:
++        writer.close()
++
++    assert expected_path.read_bytes() == payload
++    assert all(
++        len(os.fsencode(component)) <= os.pathconf(tmp_path, "PC_NAME_MAX")
++        for component in expected_path.relative_to(tmp_path).parts
++    )
++    assert _scan_existing_key_sizes(str(tmp_path)) == {key: len(payload)}
++
++    reader = LMCacheFSClient(str(tmp_path), 1)
++    destination = bytearray(len(payload))
++    try:
++        exists_id = reader.submit_batch_exists([wire_key])
++        exists_completion = _wait_for_completion(reader, exists_id)
++        assert exists_completion[1], exists_completion[2]
++        assert exists_completion[3] == [True]
++        completion = _submit_and_wait(
++            reader, "submit_batch_get", wire_key, memoryview(destination)
++        )
++        assert completion[1], completion[2]
++        assert destination == payload
++    finally:
++        reader.close()
++
++
++def test_native_connector_bounds_long_chunk_hash(tmp_path) -> None:
++    """The C++ and Python encoders agree for a 128-byte chunk hash."""
++    LMCacheFSClient = _import_fs_client()
++    key = ObjectKey(
++        chunk_hash=bytes(range(128)),
++        model_name="org/model",
++        kv_rank=0x01020304,
++        object_group_id=7,
++        cache_salt="tenant-a",
++    )
++    expected_path = tmp_path / _object_key_to_relative_path(key)
++    payload = bytearray(b"long-native-hash")
++
++    writer = LMCacheFSClient(str(tmp_path), 1)
++    try:
++        completion = _submit_and_wait(
++            writer,
++            "submit_batch_set",
++            _object_key_to_string(key),
++            memoryview(payload),
++        )
++        assert completion[1], completion[2]
++    finally:
++        writer.close()
++
++    assert expected_path.read_bytes() == payload
++    assert all(
++        len(os.fsencode(component)) <= os.pathconf(tmp_path, "PC_NAME_MAX")
++        for component in expected_path.relative_to(tmp_path).parts
++    )
++    assert _scan_existing_key_sizes(str(tmp_path)) == {key: len(payload)}
++
++
++def test_native_connector_preserves_empty_hash_in_split_layout(tmp_path) -> None:
++    """Native storage and restart inventory agree on a split empty hash."""
++    LMCacheFSClient = _import_fs_client()
++    key = ObjectKey(
++        chunk_hash=b"",
++        model_name="org/model",
++        kv_rank=1 << 4096,
++        object_group_id=7,
++        cache_salt="tenant-a",
++    )
++    expected_path = tmp_path / _object_key_to_relative_path(key)
++    assert "h0" in expected_path.parts
++    payload = bytearray(b"empty-native-hash")
++
++    writer = LMCacheFSClient(str(tmp_path), 1)
++    try:
++        completion = _submit_and_wait(
++            writer,
++            "submit_batch_set",
++            _object_key_to_string(key),
++            memoryview(payload),
++        )
++        assert completion[1], completion[2]
++    finally:
++        writer.close()
++
++    assert expected_path.read_bytes() == payload
++    assert _scan_existing_key_sizes(str(tmp_path)) == {key: len(payload)}
++
++
++def test_native_connector_rejects_object_path_at_path_max(tmp_path) -> None:
++    """Native storage rejects an overlong complete path before filesystem I/O."""
++    LMCacheFSClient = _import_fs_client()
++    path_max = os.pathconf(tmp_path, "PC_PATH_MAX")
++    if path_max < 0:
++        pytest.skip("filesystem reports no fixed PC_PATH_MAX")
++    key = ObjectKey(
++        chunk_hash=b"hash",
++        model_name="m" * (path_max // 2 + 128),
++        kv_rank=0,
++    )
++    full_path = tmp_path / _object_key_to_relative_path(key)
++    assert len(os.fsencode(full_path)) >= path_max
++
++    client = LMCacheFSClient(str(tmp_path), 1)
++    try:
++        completion = _submit_and_wait(
++            client,
++            "submit_batch_set",
++            _object_key_to_string(key),
++            memoryview(bytearray(b"payload")),
++        )
++        assert completion[1] is False
++        assert "PATH_MAX" in completion[2]
++        assert list(tmp_path.rglob("*.data")) == []
++        assert not (tmp_path / ".lmcache-objects-v1").exists()
++    finally:
++        client.close()
++
++
+ def test_batch_set_reports_partial_results_and_continues(tmp_path) -> None:
+     """A failed key must not hide or prevent successful siblings."""
+     LMCacheFSClient = _import_fs_client()

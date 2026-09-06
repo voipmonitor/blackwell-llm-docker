@@ -1,0 +1,51 @@
+{
+  "base": {
+    "commit": "a1bbd02781c7505754e7aa58a959c1a77891c690",
+    "ref": "refs/heads/master",
+    "repository": "https://github.com/local-inference-lab/b12x.git"
+  },
+  "composition": null,
+  "composition_strategy": "cherry_pick",
+  "manifest": {
+    "sha256": "9d7f949dacd64f18b871e0de4d4b42eeb66e6dcf4326c9916e70ff6219e8c228"
+  },
+  "name": "jovian-judgement-deepseek-v4-flash-b12x-r8",
+  "pull_requests": [
+    {
+      "commits": [
+        "bc8bf029b1ef3363d220b14e037c218ec03e85d9",
+        "e6bf8496e0077b8da230f0bccbda7ce6ad8a9323",
+        "f9b039b94c72779ea4d3b62864a930c882611e9e",
+        "b184292a1e0f5c3516f5971730fddea2944112a8",
+        "37d800547ca4666556b58a6b162f5cfa37c1037e",
+        "37dc7f8036f602adc1edac47464876d2a9c61d71",
+        "2a2baaf3979c1f47f8fd139aab5c6eeea35003e4",
+        "ea76030d6c2353d8cf35522b4eeedfa29e7aca67"
+      ],
+      "disposition": "cherry_picked",
+      "head": "ea76030d6c2353d8cf35522b4eeedfa29e7aca67",
+      "number": 246,
+      "ref": "refs/pull/246/head",
+      "title": "Make TP2 graph peer-push generation-safe"
+    },
+    {
+      "commits": [
+        "49e598f62816a0451077d6c3c117b583cc79ca29",
+        "91ada9ae69d6ae317bdb2208d24df58b40365af8",
+        "223f88c23601689057d07700bedc650eac521526"
+      ],
+      "disposition": "cherry_picked",
+      "head": "223f88c23601689057d07700bedc650eac521526",
+      "number": 301,
+      "ref": "refs/pull/301/head",
+      "title": "Support FP8 DeepSeek V4 dual-cache prefill"
+    }
+  ],
+  "result": {
+    "patch": "integration.patch",
+    "patch_sha256": "6bcbc767d0b8814264b2b58aea9a390f3b953410651dbbf881bf94ff3cae369c",
+    "tree": "e58515a63b7b5d15bbc523258e1e338f49698ce3"
+  },
+  "schema_version": 1,
+  "source_patches": []
+}

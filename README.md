@@ -112,6 +112,8 @@ IMAGE=voipmonitor/vllm:vllm-b12x-cu132 ./build-vllm-b12x-cu132.sh
 # PyTorch 2.13. The Vision Compose profile uses the checkpoint-supported K3
 # DSpark depth. External host KV caching is disabled by default; enabling it
 # selects engine-driven shared-memory transfer unless explicitly overridden.
+# Automatic KV admission includes the maximum scheduler-reachable DeepSeek V4
+# attention prefill peak while multimodal encoder outputs remain resident.
 ./build-deepseek-jovian-judgement-cu133-torch213.sh
 
 # Build the unified GLM-5.2 and DS4/DSpark v16 image from immutable vLLM,
