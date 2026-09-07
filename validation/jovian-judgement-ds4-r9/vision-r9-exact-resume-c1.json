@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "status": "research-only",
+  "outcome": "completed",
+  "purpose": "shared-prefix resume and concurrent decode memory stress",
+  "configuration": {
+    "base_url": "http://127.0.0.1:8158",
+    "model": "ds4-vision-r9",
+    "gpu_ids": "0,1",
+    "prefix_tokens": 267264,
+    "expected_cached_tokens": 267008,
+    "resume_tokens": 3467,
+    "concurrency": 1,
+    "waves": 6,
+    "output_tokens": 4096,
+    "independent_prefixes": false,
+    "stagger_seconds": 0,
+    "timeout": 1800,
+    "output": "/root/vllm/dspark/results/jj-r8-runtime-memory-20260906/vision-r9-exact-resume-c1.json"
+  },
+  "results": [
+    {
+      "name": "prefix-prime-0",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 267265,
+        "total_tokens": 267266,
+        "completion_tokens": 1,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": null,
+      "prefix_hit_matches": null,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 29.4224845909921
+    },
+    {
+      "name": "resume-0-0",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270731,
+        "total_tokens": 274827,
+        "completion_tokens": 4096,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 16.188653846998932
+    },
+    {
+      "name": "resume-1-0",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270731,
+        "total_tokens": 274827,
+        "completion_tokens": 4096,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 13.883487137994962
+    },
+    {
+      "name": "resume-2-0",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270731,
+        "total_tokens": 274827,
+        "completion_tokens": 4096,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 15.966676027019275
+    },
+    {
+      "name": "resume-3-0",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270731,
+        "total_tokens": 274827,
+        "completion_tokens": 4096,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 18.33912121198955
+    },
+    {
+      "name": "resume-4-0",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270731,
+        "total_tokens": 274827,
+        "completion_tokens": 4096,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 13.495828207000159
+    },
+    {
+      "name": "resume-5-0",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270731,
+        "total_tokens": 274827,
+        "completion_tokens": 4096,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 14.19442878497648
+    }
+  ],
+  "minimum_free_mib": [
+    1025,
+    1023
+  ],
+  "memory_samples": 394,
+  "health_status": 200,
+  "health_error": null,
+  "limitations": [
+    "Synthetic token inputs do not reproduce the reporter's exact request history.",
+    "Host memory sampling can miss allocations shorter than its 250 ms interval.",
+    "HTTP overlap does not prove a particular mixed scheduler batch was executed."
+  ]
+}

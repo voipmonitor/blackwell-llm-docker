@@ -2,6 +2,29 @@
 
 Docker images for LLM inference on NVIDIA Blackwell GPUs (SM120).
 
+## DeepSeek V4 Serving
+
+The Jovian Judgement r9 serving profiles use TP2 on two 96 GiB SM120 GPUs,
+InstantTensor BUFFERED, fixed probabilistic DSpark K5 for the 0731 text
+checkpoint or K3 for Vision, and optional engine-driven LMCache.
+
+```bash
+docker compose -f examples/docker-compose-ds4-dspark-jovian-judgement-r9.yml pull
+docker compose -f examples/docker-compose-ds4-dspark-jovian-judgement-r9.yml up -d
+```
+
+Use `examples/docker-compose-ds4-vision-jovian-judgement-r9.yml` for the Vision
+checkpoint. These profiles download prebuilt images and do not build locally.
+GPU KV caching is enabled; `LMCACHE_MODE=ram LMCACHE_L1_GB=24` adds host-memory
+reuse. The standalone LMCache process does not create a CUDA context.
+
+See the [serving specification](https://github.com/local-inference-lab/rtx6kpro/blob/master/models/ds4-jovian-judgement-r9.md)
+for artifact identity, measured profiles, and qualification limits. The
+[source review checklist](https://github.com/local-inference-lab/rtx6kpro/issues/95)
+lists the PR dependencies. Delayed r8 production crashes remain unproven
+against a complete reproducer; operator-level corrections are not evidence
+that every reported crash is resolved.
+
 ## Images
 
 | Image | Dockerfile | Stack |

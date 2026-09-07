@@ -1,0 +1,2342 @@
+{
+  "model": "ds4-vision-r9",
+  "seed": 731,
+  "results": [
+    {
+      "name": "prime",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 267265,
+        "total_tokens": 267266,
+        "completion_tokens": 1,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": null,
+      "prefix_hit_matches": null,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 28.144820799003355
+    },
+    {
+      "name": "wave-0-slot-0-tail-6171",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273435,
+        "total_tokens": 273691,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 7.7647117759916
+    },
+    {
+      "name": "wave-0-slot-1-tail-825",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268089,
+        "total_tokens": 268345,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 8.08936894798535
+    },
+    {
+      "name": "wave-0-slot-2-tail-5978",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273242,
+        "total_tokens": 273498,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 7.372849076986313
+    },
+    {
+      "name": "wave-0-slot-3-tail-4646",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271910,
+        "total_tokens": 272166,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 7.469453326979419
+    },
+    {
+      "name": "wave-1-slot-0-tail-7596",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274860,
+        "total_tokens": 275116,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.526219557999866
+    },
+    {
+      "name": "wave-1-slot-1-tail-6928",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274192,
+        "total_tokens": 274448,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.450750056013931
+    },
+    {
+      "name": "wave-1-slot-2-tail-8104",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 275368,
+        "total_tokens": 275624,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.444666800001869
+    },
+    {
+      "name": "wave-1-slot-3-tail-1120",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268384,
+        "total_tokens": 268640,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.315680680010701
+    },
+    {
+      "name": "wave-2-slot-0-tail-8147",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 275411,
+        "total_tokens": 275667,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.379414246999659
+    },
+    {
+      "name": "wave-2-slot-1-tail-295",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 267559,
+        "total_tokens": 267815,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.690638932981528
+    },
+    {
+      "name": "wave-2-slot-2-tail-3431",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270695,
+        "total_tokens": 270951,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.391944442992099
+    },
+    {
+      "name": "wave-2-slot-3-tail-3883",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271147,
+        "total_tokens": 271403,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.211902624985669
+    },
+    {
+      "name": "wave-3-slot-0-tail-1082",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268346,
+        "total_tokens": 268602,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.531995038996683
+    },
+    {
+      "name": "wave-3-slot-1-tail-5861",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273125,
+        "total_tokens": 273381,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.014371374010807
+    },
+    {
+      "name": "wave-3-slot-2-tail-6488",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273752,
+        "total_tokens": 274008,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.477835613011848
+    },
+    {
+      "name": "wave-3-slot-3-tail-4429",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271693,
+        "total_tokens": 271949,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.860621902014827
+    },
+    {
+      "name": "wave-4-slot-0-tail-3389",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270653,
+        "total_tokens": 270909,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.913724211015506
+    },
+    {
+      "name": "wave-4-slot-1-tail-5050",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272314,
+        "total_tokens": 272570,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.295914564980194
+    },
+    {
+      "name": "wave-4-slot-2-tail-2424",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269688,
+        "total_tokens": 269944,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.168065203004517
+    },
+    {
+      "name": "wave-4-slot-3-tail-4563",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271827,
+        "total_tokens": 272083,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.986779969010968
+    },
+    {
+      "name": "wave-5-slot-0-tail-7479",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274743,
+        "total_tokens": 274999,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.5743417229969054
+    },
+    {
+      "name": "wave-5-slot-1-tail-4755",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272019,
+        "total_tokens": 272275,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.612110164016485
+    },
+    {
+      "name": "wave-5-slot-2-tail-2449",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269713,
+        "total_tokens": 269969,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.470552188984584
+    },
+    {
+      "name": "wave-5-slot-3-tail-2529",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269793,
+        "total_tokens": 270049,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.348520331986947
+    },
+    {
+      "name": "wave-6-slot-0-tail-6547",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273811,
+        "total_tokens": 274067,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.971032817004016
+    },
+    {
+      "name": "wave-6-slot-1-tail-7474",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274738,
+        "total_tokens": 274994,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.76934688599431
+    },
+    {
+      "name": "wave-6-slot-2-tail-1262",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268526,
+        "total_tokens": 268782,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.70516329901875
+    },
+    {
+      "name": "wave-6-slot-3-tail-5464",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272728,
+        "total_tokens": 272984,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.258329801989021
+    },
+    {
+      "name": "wave-7-slot-0-tail-3549",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270813,
+        "total_tokens": 271069,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.186158339987742
+    },
+    {
+      "name": "wave-7-slot-1-tail-367",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 267631,
+        "total_tokens": 267887,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.255713983991882
+    },
+    {
+      "name": "wave-7-slot-2-tail-7840",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 275104,
+        "total_tokens": 275360,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.422810279007535
+    },
+    {
+      "name": "wave-7-slot-3-tail-4032",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271296,
+        "total_tokens": 271552,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.967295396985719
+    },
+    {
+      "name": "wave-8-slot-0-tail-6956",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274220,
+        "total_tokens": 274476,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.164316766982665
+    },
+    {
+      "name": "wave-8-slot-1-tail-7534",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274798,
+        "total_tokens": 275054,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.9047669419960584
+    },
+    {
+      "name": "wave-8-slot-2-tail-7290",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274554,
+        "total_tokens": 274810,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.03547350000008
+    },
+    {
+      "name": "wave-8-slot-3-tail-1989",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269253,
+        "total_tokens": 269509,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.7513403440243565
+    },
+    {
+      "name": "wave-9-slot-0-tail-2380",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269644,
+        "total_tokens": 269900,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.175412828975823
+    },
+    {
+      "name": "wave-9-slot-1-tail-7024",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274288,
+        "total_tokens": 274544,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.91876604501158
+    },
+    {
+      "name": "wave-9-slot-2-tail-3028",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270292,
+        "total_tokens": 270548,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.709673926001415
+    },
+    {
+      "name": "wave-9-slot-3-tail-3941",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271205,
+        "total_tokens": 271461,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.2443617320095655
+    },
+    {
+      "name": "wave-10-slot-0-tail-7386",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274650,
+        "total_tokens": 274906,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.625973876012722
+    },
+    {
+      "name": "wave-10-slot-1-tail-5767",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273031,
+        "total_tokens": 273287,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.034720958006801
+    },
+    {
+      "name": "wave-10-slot-2-tail-6651",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273915,
+        "total_tokens": 274171,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.6107292090018746
+    },
+    {
+      "name": "wave-10-slot-3-tail-7453",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274717,
+        "total_tokens": 274973,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.904232391010737
+    },
+    {
+      "name": "wave-11-slot-0-tail-3700",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270964,
+        "total_tokens": 271220,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.73342769901501
+    },
+    {
+      "name": "wave-11-slot-1-tail-2420",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269684,
+        "total_tokens": 269940,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.389991984993685
+    },
+    {
+      "name": "wave-11-slot-2-tail-6789",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274053,
+        "total_tokens": 274309,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.9758325350121595
+    },
+    {
+      "name": "wave-11-slot-3-tail-4354",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271618,
+        "total_tokens": 271874,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.387922341993544
+    },
+    {
+      "name": "wave-12-slot-0-tail-4880",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272144,
+        "total_tokens": 272400,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.047059342003195
+    },
+    {
+      "name": "wave-12-slot-1-tail-7429",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274693,
+        "total_tokens": 274949,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.320082598016597
+    },
+    {
+      "name": "wave-12-slot-2-tail-7415",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274679,
+        "total_tokens": 274935,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.129371962975711
+    },
+    {
+      "name": "wave-12-slot-3-tail-1246",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268510,
+        "total_tokens": 268766,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.335738544003107
+    },
+    {
+      "name": "wave-13-slot-0-tail-2784",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270048,
+        "total_tokens": 270304,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.699861881992547
+    },
+    {
+      "name": "wave-13-slot-1-tail-7569",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274833,
+        "total_tokens": 275089,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.041586967010517
+    },
+    {
+      "name": "wave-13-slot-2-tail-2421",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269685,
+        "total_tokens": 269941,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.284667044994421
+    },
+    {
+      "name": "wave-13-slot-3-tail-2868",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270132,
+        "total_tokens": 270388,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.055291319004027
+    },
+    {
+      "name": "wave-14-slot-0-tail-4002",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271266,
+        "total_tokens": 271522,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.8860771830077283
+    },
+    {
+      "name": "wave-14-slot-1-tail-2428",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269692,
+        "total_tokens": 269948,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.1081895969982725
+    },
+    {
+      "name": "wave-14-slot-2-tail-672",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 267936,
+        "total_tokens": 268192,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.746701078984188
+    },
+    {
+      "name": "wave-14-slot-3-tail-769",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268033,
+        "total_tokens": 268289,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.24920718499925
+    },
+    {
+      "name": "wave-15-slot-0-tail-3159",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270423,
+        "total_tokens": 270679,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.443351438007085
+    },
+    {
+      "name": "wave-15-slot-1-tail-3211",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270475,
+        "total_tokens": 270731,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.653903049998917
+    },
+    {
+      "name": "wave-15-slot-2-tail-1046",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268310,
+        "total_tokens": 268566,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.224683519016253
+    },
+    {
+      "name": "wave-15-slot-3-tail-6856",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274120,
+        "total_tokens": 274376,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.748481472022831
+    },
+    {
+      "name": "wave-16-slot-0-tail-2040",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269304,
+        "total_tokens": 269560,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.6039669329766184
+    },
+    {
+      "name": "wave-16-slot-1-tail-2072",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269336,
+        "total_tokens": 269592,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.0139856650203
+    },
+    {
+      "name": "wave-16-slot-2-tail-4455",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271719,
+        "total_tokens": 271975,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.683887279010378
+    },
+    {
+      "name": "wave-16-slot-3-tail-2735",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269999,
+        "total_tokens": 270255,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.63382934598485
+    },
+    {
+      "name": "wave-17-slot-0-tail-701",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 267965,
+        "total_tokens": 268221,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.8934490749961697
+    },
+    {
+      "name": "wave-17-slot-1-tail-6227",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273491,
+        "total_tokens": 273747,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.30860155497794
+    },
+    {
+      "name": "wave-17-slot-2-tail-2831",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270095,
+        "total_tokens": 270351,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.907597804995021
+    },
+    {
+      "name": "wave-17-slot-3-tail-6218",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273482,
+        "total_tokens": 273738,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.0901061999902595
+    },
+    {
+      "name": "wave-18-slot-0-tail-5549",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272813,
+        "total_tokens": 273069,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.2549122190102935
+    },
+    {
+      "name": "wave-18-slot-1-tail-2918",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270182,
+        "total_tokens": 270438,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.121422667027218
+    },
+    {
+      "name": "wave-18-slot-2-tail-5972",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273236,
+        "total_tokens": 273492,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.9278494530008174
+    },
+    {
+      "name": "wave-18-slot-3-tail-1466",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268730,
+        "total_tokens": 268986,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.3883856480242684
+    },
+    {
+      "name": "wave-19-slot-0-tail-6633",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273897,
+        "total_tokens": 274153,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.963632145023439
+    },
+    {
+      "name": "wave-19-slot-1-tail-7360",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274624,
+        "total_tokens": 274880,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.431883002020186
+    },
+    {
+      "name": "wave-19-slot-2-tail-2835",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 270099,
+        "total_tokens": 270355,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.424730691011064
+    },
+    {
+      "name": "wave-19-slot-3-tail-5399",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272663,
+        "total_tokens": 272919,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.109335517016007
+    },
+    {
+      "name": "wave-20-slot-0-tail-7851",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 275115,
+        "total_tokens": 275371,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.202384829026414
+    },
+    {
+      "name": "wave-20-slot-1-tail-7688",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 274952,
+        "total_tokens": 275208,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.402926799986744
+    },
+    {
+      "name": "wave-20-slot-2-tail-2476",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269740,
+        "total_tokens": 269996,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 7.214644847001182
+    },
+    {
+      "name": "wave-20-slot-3-tail-6130",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273394,
+        "total_tokens": 273650,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 6.00057594300597
+    },
+    {
+      "name": "wave-21-slot-0-tail-5191",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272455,
+        "total_tokens": 272711,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.167718512006104
+    },
+    {
+      "name": "wave-21-slot-1-tail-927",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268191,
+        "total_tokens": 268447,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.269596005004132
+    },
+    {
+      "name": "wave-21-slot-2-tail-6514",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273778,
+        "total_tokens": 274034,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.838207599008456
+    },
+    {
+      "name": "wave-21-slot-3-tail-2680",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269944,
+        "total_tokens": 270200,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.8207233370048925
+    },
+    {
+      "name": "wave-22-slot-0-tail-4003",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271267,
+        "total_tokens": 271523,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.674843579996377
+    },
+    {
+      "name": "wave-22-slot-1-tail-5359",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 272623,
+        "total_tokens": 272879,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.584911418001866
+    },
+    {
+      "name": "wave-22-slot-2-tail-4234",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 271498,
+        "total_tokens": 271754,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.52270642798976
+    },
+    {
+      "name": "wave-22-slot-3-tail-6102",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273366,
+        "total_tokens": 273622,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 5.443853286007652
+    },
+    {
+      "name": "wave-23-slot-0-tail-1729",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 268993,
+        "total_tokens": 269249,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.555399575008778
+    },
+    {
+      "name": "wave-23-slot-1-tail-2625",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269889,
+        "total_tokens": 270145,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.702602708013728
+    },
+    {
+      "name": "wave-23-slot-2-tail-5804",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 273068,
+        "total_tokens": 273324,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 4.630582329002209
+    },
+    {
+      "name": "wave-23-slot-3-tail-2617",
+      "error": null,
+      "http_status": 200,
+      "usage": {
+        "prompt_tokens": 269881,
+        "total_tokens": 270137,
+        "completion_tokens": 256,
+        "prompt_tokens_details": {
+          "cached_tokens": 267008,
+          "created_cache_tokens": null,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": null
+      },
+      "prompt_tokens_match": true,
+      "output_tokens_match": true,
+      "expected_cached_tokens": 267008,
+      "prefix_hit_matches": true,
+      "finish_reasons": [
+        "length"
+      ],
+      "elapsed_seconds": 3.706006573018385
+    }
+  ],
+  "minimum_free_mib": [
+    1023,
+    1021
+  ],
+  "free_mib_after_wave": [
+    1023,
+    1021
+  ]
+}

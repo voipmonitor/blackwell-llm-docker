@@ -1,0 +1,817 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="0" tests="8" time="8.823" timestamp="2026-09-07T08:56:29.832463+00:00" hostname="2402354acaf1"><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[decode-False-16]" time="2.238"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0eeeb49b0&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0eeeb49b0&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 16, mode = 'decode', large_pool = False
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0eeeb49b0&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0eeeb49b0&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[decode-False-32]" time="0.533"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ef253660&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0ef253660&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 32, mode = 'decode', large_pool = False
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ef253660&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0ef253660&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[decode-True-16]" time="0.410"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0edd8f5c0&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0edd8f5c0&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 16, mode = 'decode', large_pool = True
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0edd8f5c0&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0edd8f5c0&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[decode-True-32]" time="0.017"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0eef05ae0&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0eef05ae0&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 32, mode = 'decode', large_pool = True
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0eef05ae0&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0eef05ae0&gt; = tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False],\n...False, False,  ..., False, False, False],\n         [False, False, False,  ..., False, False, False]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan],\n         [nan, nan, nan,...n,  ..., nan, nan, nan],\n         [nan, nan, nan,  ..., nan, nan, nan]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[extend-False-16]" time="0.926"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0eef30ff0&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0eef30ff0&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 16, mode = 'extend', large_pool = False
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0eef30ff0&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0eef30ff0&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[extend-False-32]" time="0.622"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ee775590&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0ee775590&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 32, mode = 'extend', large_pool = False
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ee775590&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0ee775590&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[extend-True-16]" time="0.138"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ef1d18b0&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0ef1d18b0&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 16, mode = 'extend', large_pool = True
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ef1d18b0&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0ef1d18b0&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase><testcase classname="tests.attention.test_compressed_sparse_mla" name="test_compressed_sparse_mla_ignores_nan_in_unused_page[extend-True-32]" time="0.133"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ef241900&gt;()&#10; +    where &lt;built-in method all of Tensor object at 0x79d0ef241900&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all&#10; +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))&#10; +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite">heads = 32, mode = 'extend', large_pool = True
+
+    @pytest.mark.parametrize("heads", [16, 32])
+    @pytest.mark.parametrize(
+        "mode,large_pool",
+        [("decode", False), ("decode", True), ("extend", False), ("extend", True)],
+    )
+    @torch.inference_mode()
+    def test_compressed_sparse_mla_ignores_nan_in_unused_page(
+        heads: int, mode: str, large_pool: bool
+    ) -&gt; None:
+        """Masked candidates must not contribute unused-page NaNs to P.V."""
+        device = require_sm120()
+        rows = 1 if mode == "decode" else 17
+        page_size = 64
+        stride = 1_002_240
+        live_page = (1 &lt;&lt; 31) // stride + 1 if large_pool else 1
+        rope = torch.zeros((8, 64), dtype=torch.bfloat16, device=device)
+        rope[:, 0] = 4
+        nope = torch.ones((8, 448), device=device)
+        compact = pack_compressed_sparse_mla_kv_cache_reference(
+            -nope, -rope, page_size=page_size
+        )
+        indexed_compact = pack_compressed_sparse_mla_kv_cache_reference(
+            nope, rope, page_size=page_size
+        )
+        page_bytes = compact.shape[1]
+        storage = torch.empty((live_page + 1) * stride, dtype=torch.uint8, device=device)
+        swa_cache = storage.as_strided((live_page + 1, page_bytes), (stride, 1))
+        indexed_cache = storage.as_strided(
+            (live_page + 1, page_bytes), (stride, 1), storage_offset=page_bytes
+        )
+        for cache, source in ((swa_cache, compact), (indexed_cache, indexed_compact)):
+            cache[0].zero_()
+            cache[live_page].copy_(source[0])
+        q = torch.zeros((rows, heads, 512), dtype=torch.bfloat16, device=device)
+        q[:, :, 448] = 16
+        swa_indices = torch.full((rows, 128), -1, dtype=torch.int32, device=device)
+        indexed_indices = torch.full((rows, 512), -1, dtype=torch.int32, device=device)
+        swa_indices[:, :8] = live_page * page_size + torch.arange(8, device=device)
+        indexed_indices[:, :3] = live_page * page_size + torch.arange(3, device=device)
+        swa_lengths = torch.arange(rows, device=device, dtype=torch.int32) % 8 + 1
+        indexed_lengths = torch.full((rows,), 3, device=device, dtype=torch.int32)
+        attn_sink = torch.zeros(heads, dtype=torch.float32, device=device)
+        binding = _make_compressed_binding(
+            device=device,
+            rows=rows,
+            topk=640,
+            max_kv_rows=rows * 640,
+            q=q,
+            swa_indices=swa_indices,
+            swa_lengths=swa_lengths,
+            indexed_indices=indexed_indices,
+            indexed_lengths=indexed_lengths,
+            num_q_heads=heads,
+            use_cuda_graph=True,
+        )
+        binding.scratch.mode = mode
+
+        def run():
+            return compressed_sparse_mla_decode_forward(
+                binding=binding,
+                swa_k_cache=swa_cache,
+                swa_page_size=page_size,
+                indexed_k_cache=indexed_cache,
+                indexed_page_size=page_size,
+                attn_sink=attn_sink,
+                sm_scale=_SM_SCALE,
+            )
+
+        baseline = run().clone()
+        expected = compressed_sparse_mla_reference(
+            q,
+            compact,
+            swa_indices - live_page * page_size,
+            swa_lengths,
+            swa_page_size=page_size,
+            extra_k_cache=indexed_compact,
+            extra_indices=indexed_indices - live_page * page_size,
+            extra_topk_lengths=indexed_lengths,
+            extra_page_size=page_size,
+            attn_sink=attn_sink,
+            sm_scale=_SM_SCALE,
+        )
+        torch.testing.assert_close(
+            baseline.float(), expected.float(), atol=0.002, rtol=0.01
+        )
+        assert torch.count_nonzero(baseline).item() &gt; 0
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            result = run()
+        for cache in (swa_cache, indexed_cache):
+            cache[0].fill_(255)
+        graph.replay()
+        torch.cuda.synchronize()
+&gt;       assert torch.isfinite(result).all()
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of Tensor object at 0x79d0ef241900&gt;()
+E        +    where &lt;built-in method all of Tensor object at 0x79d0ef241900&gt; = tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0').all
+E        +      where tensor([[[False, False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True],\n...False, False,  ...,  True,  True,  True],\n         [False, False, False,  ...,  True,  True,  True]]], device='cuda:0') = &lt;built-in method isfinite of type object at 0x79d237486ce0&gt;(tensor([[[nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ...,...an, nan,  ..., 0., 0., 0.],\n         [nan, nan, nan,  ..., 0., 0., 0.]]], device='cuda:0',\n       dtype=torch.bfloat16))
+E        +        where &lt;built-in method isfinite of type object at 0x79d237486ce0&gt; = torch.isfinite
+
+opt/infernal-invocation/b12x/tests/attention/test_compressed_sparse_mla.py:335: AssertionError</failure></testcase></testsuite></testsuites>

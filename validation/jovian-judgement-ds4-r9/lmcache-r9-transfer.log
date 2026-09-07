@@ -1,0 +1,348 @@
+[32;20m[2026-09-07 09:34:42,277] LMCache INFO:[0m torch_dev=StubCPUDevice(device_type=cpu), torch_device_type=cpu [3m(_device_detect.py:312:lmcache.v1.platform._device_detect)[0m
+[32;20m[2026-09-07 09:34:42,921] LMCache INFO:[0m multi_layer_block_kv_transfer mode: tensor [3m(base.py:177:lmcache.v1.multiprocess.transfer_context.base)[0m
+[32;20m[2026-09-07 09:34:44,263] LMCache INFO:[0m Discovered API module: cache_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,264] LMCache INFO:[0m Discovered API module: env_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,264] LMCache INFO:[0m Discovered API module: loglevel_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,265] LMCache INFO:[0m Discovered API module: metrics_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,266] LMCache INFO:[0m Discovered API module: periodic_thread_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,266] LMCache INFO:[0m Discovered API module: run_script_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,267] LMCache INFO:[0m Discovered API module: thread_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,269] LMCache INFO:[0m Discovered API module: common_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,269] LMCache INFO:[0m Discovered API module: config_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,270] LMCache INFO:[0m Discovered API module: info_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,272] LMCache INFO:[0m Discovered API module: quota_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,274] LMCache INFO:[0m Discovered API module: reconfigure_api [3m(router_discovery.py:53:lmcache.v1.utils.router_discovery)[0m
+[32;20m[2026-09-07 09:34:44,461] LMCache INFO:[0m Starting LMCache HTTP server on http://0.0.0.0:8199 [3m(http_server.py:259:lmcache.v1.multiprocess.http_server)[0m
+INFO:     Started server process [185]
+INFO:     Waiting for application startup.
+[32;20m[2026-09-07 09:34:44,472] LMCache INFO:[0m Starting LMCache HTTP server... (accelerator available: False) [3m(http_server.py:77:lmcache.v1.multiprocess.http_server)[0m
+[32;20m[2026-09-07 09:34:44,482] LMCache INFO:[0m OTel MeterProvider initialised with Prometheus fallback (standalone metrics HTTP server disabled; /metrics must be exposed by the caller), resource={'telemetry.sdk.language': 'python', 'telemetry.sdk.name': 'opentelemetry', 'telemetry.sdk.version': '1.44.0', 'service.instance.id': '1575346d-a4cc-4c0a-8832-2e15ad59c872', 'service.name': 'unknown_service'} [3m(otel_init.py:114:lmcache.v1.mp_observability.otel_init)[0m
+[32;20m[2026-09-07 09:34:44,482] LMCache INFO:[0m Checking if shm capacity is larger than L1 request [3m(server.py:422:lmcache.v1.multiprocess.server)[0m
+[32;20m[2026-09-07 09:34:44,483] LMCache INFO:[0m Starting L1EvictionController... [3m(eviction_controller.py:67:lmcache.v1.distributed.storage_controllers.eviction_controller)[0m
+[32;20m[2026-09-07 09:34:44,484] LMCache INFO:[0m Starting L2EvictionController... [3m(eviction_controller.py:797:lmcache.v1.distributed.storage_controllers.eviction_controller)[0m
+[32;20m[2026-09-07 09:34:44,484] LMCache INFO:[0m Starting StoreController... [3m(store_controller.py:305:lmcache.v1.distributed.storage_controllers.store_controller)[0m
+[32;20m[2026-09-07 09:34:44,484] LMCache INFO:[0m Starting PrefetchController... [3m(prefetch_controller.py:604:lmcache.v1.distributed.storage_controllers.prefetch_controller)[0m
+[32;20m[2026-09-07 09:34:44,484] LMCache INFO:[0m Using blake3 hash function [3m(token_hasher.py:79:lmcache.v1.multiprocess.token_hasher)[0m
+[32;20m[2026-09-07 09:34:44,485] LMCache INFO:[0m Computed NONE_HASH=b"~>\xff\x9e\xf7a:P4\x0e\xb1&w\xee\x03\xb8:\xc7Y\xfc\xba\x9b\xb3'\x05\xf0rH\xd5mG;" using hash function [3m(token_hasher.py:180:lmcache.v1.multiprocess.token_hasher)[0m
+[32;20m[2026-09-07 09:34:44,485] LMCache INFO:[0m TokenHasher initialized: chunk_size=4096, hash_algorithm=blake3 [3m(token_hasher.py:67:lmcache.v1.multiprocess.token_hasher)[0m
+[32;20m[2026-09-07 09:34:44,485] LMCache INFO:[0m PeriodicThread SessionManager-cleanup-thread-7729ce234d10 entering main loop (interval=60.0s) [3m(periodic_thread.py:304:lmcache.v1.periodic_thread)[0m
+[32;20m[2026-09-07 09:34:44,485] LMCache INFO:[0m Started PeriodicThread: SessionManager-cleanup-thread-7729ce234d10 (level=medium, interval=60.0s, init_wait=0.0s) [3m(periodic_thread.py:248:lmcache.v1.periodic_thread)[0m
+[32;20m[2026-09-07 09:34:44,485] LMCache INFO:[0m Supported transfer mode: engine_driven [3m(server.py:263:lmcache.v1.multiprocess.server)[0m
+[32;20m[2026-09-07 09:34:44,486] LMCache INFO:[0m PeriodicThread lmcache-mp-worker-reaper entering main loop (interval=30.0s) [3m(periodic_thread.py:304:lmcache.v1.periodic_thread)[0m
+[32;20m[2026-09-07 09:34:44,486] LMCache INFO:[0m Started PeriodicThread: lmcache-mp-worker-reaper (level=medium, interval=30.0s, init_wait=0.0s) [3m(periodic_thread.py:248:lmcache.v1.periodic_thread)[0m
+[32;20m[2026-09-07 09:34:44,486] LMCache INFO:[0m Initializing MP usage context. [3m(mp.py:93:lmcache.usage_telemetry.mp)[0m
+[32;20m[2026-09-07 09:34:44,486] LMCache INFO:[0m Initializing MP continuous usage reporting. [3m(mp_continuous.py:217:lmcache.usage_telemetry.mp_continuous)[0m
+[32;20m[2026-09-07 09:34:44,486] LMCache INFO:[0m Started PeriodicThread: lmcache-usage-continuous (level=low, interval=600.0s, init_wait=600.0s) [3m(periodic_thread.py:248:lmcache.v1.periodic_thread)[0m
+[32;20m[2026-09-07 09:34:44,486] LMCache INFO:[0m Initializing L2 connector usage reporting. [3m(l2_usage.py:243:lmcache.usage_telemetry.l2_usage)[0m
+[32;20m[2026-09-07 09:34:44,486] LMCache INFO:[0m Started PeriodicThread: lmcache-usage-l2 (level=low, interval=600.0s, init_wait=600.0s) [3m(periodic_thread.py:248:lmcache.v1.periodic_thread)[0m
+[32;20m[2026-09-07 09:34:44,487] LMCache INFO:[0m Initializing L1 usage reporting. [3m(l1_usage.py:154:lmcache.usage_telemetry.l1_usage)[0m
+[32;20m[2026-09-07 09:34:44,487] LMCache INFO:[0m Started PeriodicThread: lmcache-usage-l1 (level=low, interval=600.0s, init_wait=600.0s) [3m(periodic_thread.py:248:lmcache.v1.periodic_thread)[0m
+[32;20m[2026-09-07 09:34:44,489] LMCache INFO:[0m Created AffinityThreadPool 'affinity-pool-0' with 2 worker slots: up to 2 distinct affinity keys each bind to their own thread before slots are shared. Compare this against the number of clients expected to connect to confirm routing. [3m(affinity_pool.py:60:lmcache.v1.multiprocess.affinity_pool)[0m
+[32;20m[2026-09-07 09:34:44,489] LMCache INFO:[0m LMCache ZMQ cache server is running on tcp://127.0.0.1:5713 [3m(server.py:488:lmcache.v1.multiprocess.server)[0m
+[32;20m[2026-09-07 09:34:44,489] LMCache INFO:[0m LMCache cache server is running... [3m(server.py:503:lmcache.v1.multiprocess.server)[0m
+[32;20m[2026-09-07 09:34:44,489] LMCache INFO:[0m LMCache HTTP server initialized [3m(http_server.py:164:lmcache.v1.multiprocess.http_server)[0m
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8199 (Press CTRL+C to quit)
+INFO:     127.0.0.1:47654 - "GET /healthcheck HTTP/1.1" 200 OK
+[32;20m[2026-09-07 09:34:45,000] LMCache INFO:[0m Checking memory allocator consistency [3m(tensor_memory_allocator.py:297:lmcache.v1.memory_management)[0m
+[32;20m[2026-09-07 09:34:45,000] LMCache INFO:[0m  - Total active allocations: 0 [3m(tensor_memory_allocator.py:298:lmcache.v1.memory_management)[0m
+[32;20m[2026-09-07 09:34:45,000] LMCache INFO:[0m  - Total allocated size: 0.000000 MB [3m(tensor_memory_allocator.py:299:lmcache.v1.memory_management)[0m
+[32;20m[2026-09-07 09:34:45,001] LMCache INFO:[0m  - Total free size: 24576.000000 MB [3m(tensor_memory_allocator.py:306:lmcache.v1.memory_management)[0m
+INFO:     127.0.0.1:47666 - "GET /status HTTP/1.1" 200 OK
+[32;20m[2026-09-07 09:36:20,903] LMCache INFO:[0m Using shm non-GPU transfer strategy [3m(server_transfer.py:152:lmcache.v1.multiprocess.modules.server_transfer)[0m
+[32;20m[2026-09-07 09:36:20,903] LMCache INFO:[0m Registered non-GPU context for instance 772314728660564916 (model=deepseek-ai/DeepSeek-V4-Flash-0731, world_size=1) [3m(engine_driven_transfer.py:546:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:36:20,904] LMCache INFO:[0m Using shm non-GPU transfer strategy [3m(server_transfer.py:152:lmcache.v1.multiprocess.modules.server_transfer)[0m
+[32;20m[2026-09-07 09:36:20,904] LMCache INFO:[0m Registered non-GPU context for instance 411033847936968215 (model=deepseek-ai/DeepSeek-V4-Flash-0731, world_size=1) [3m(engine_driven_transfer.py:546:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:24,163] LMCache INFO:[0m Checking memory allocator consistency [3m(tensor_memory_allocator.py:297:lmcache.v1.memory_management)[0m
+[32;20m[2026-09-07 09:37:24,164] LMCache INFO:[0m  - Total active allocations: 0 [3m(tensor_memory_allocator.py:298:lmcache.v1.memory_management)[0m
+[32;20m[2026-09-07 09:37:24,164] LMCache INFO:[0m  - Total allocated size: 0.000000 MB [3m(tensor_memory_allocator.py:299:lmcache.v1.memory_management)[0m
+[32;20m[2026-09-07 09:37:24,164] LMCache INFO:[0m  - Total free size: 24576.000000 MB [3m(tensor_memory_allocator.py:306:lmcache.v1.memory_management)[0m
+INFO:     127.0.0.1:42404 - "GET /status HTTP/1.1" 200 OK
+[32;20m[2026-09-07 09:37:40,309] LMCache INFO:[0m AffinityThreadPool: affinity_key=-7489921690173773951 assigned to worker slot 0 of 2 (thread affinity-pool-0-0); 1 distinct key(s) now bound [3m(affinity_pool.py:108:lmcache.v1.multiprocess.affinity_pool)[0m
+[32;20m[2026-09-07 09:37:40,368] LMCache INFO:[0m Stored 4096 tokens in 0.057 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+INFO:     127.0.0.1:38716 - "GET /metrics HTTP/1.1" 200 OK
+[32;20m[2026-09-07 09:37:42,915] LMCache INFO:[0m Stored 4096 tokens in 0.017 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:43,187] LMCache INFO:[0m Stored 4096 tokens in 0.016 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:43,469] LMCache INFO:[0m Stored 4096 tokens in 0.017 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:43,747] LMCache INFO:[0m Stored 4096 tokens in 0.017 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:44,034] LMCache INFO:[0m Stored 4096 tokens in 0.022 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:44,311] LMCache INFO:[0m Stored 4096 tokens in 0.018 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:44,599] LMCache INFO:[0m Stored 4096 tokens in 0.029 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:44,878] LMCache INFO:[0m Stored 4096 tokens in 0.026 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:45,170] LMCache INFO:[0m Stored 4096 tokens in 0.025 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:45,477] LMCache INFO:[0m Stored 4096 tokens in 0.016 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:45,774] LMCache INFO:[0m Stored 4096 tokens in 0.016 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:46,073] LMCache INFO:[0m Stored 4096 tokens in 0.036 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:46,373] LMCache INFO:[0m Stored 4096 tokens in 0.043 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:46,673] LMCache INFO:[0m Stored 4096 tokens in 0.041 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:47,010] LMCache INFO:[0m Stored 4096 tokens in 0.028 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:47,314] LMCache INFO:[0m Stored 4096 tokens in 0.049 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:47,631] LMCache INFO:[0m Stored 4096 tokens in 0.047 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:47,946] LMCache INFO:[0m Stored 4096 tokens in 0.056 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:48,262] LMCache INFO:[0m Stored 4096 tokens in 0.057 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:48,579] LMCache INFO:[0m Stored 4096 tokens in 0.039 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:48,901] LMCache INFO:[0m Stored 4096 tokens in 0.044 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:49,225] LMCache INFO:[0m Stored 4096 tokens in 0.069 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:49,554] LMCache INFO:[0m Stored 4096 tokens in 0.070 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:49,885] LMCache INFO:[0m Stored 4096 tokens in 0.069 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:50,220] LMCache INFO:[0m Stored 4096 tokens in 0.075 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:50,557] LMCache INFO:[0m Stored 4096 tokens in 0.073 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:50,898] LMCache INFO:[0m Stored 4096 tokens in 0.081 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:51,291] LMCache INFO:[0m Stored 4096 tokens in 0.017 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:51,639] LMCache INFO:[0m Stored 4096 tokens in 0.089 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:51,986] LMCache INFO:[0m Stored 4096 tokens in 0.090 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:52,340] LMCache INFO:[0m Stored 4096 tokens in 0.095 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:52,698] LMCache INFO:[0m Stored 4096 tokens in 0.101 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:53,071] LMCache INFO:[0m Stored 4096 tokens in 0.079 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:53,438] LMCache INFO:[0m Stored 4096 tokens in 0.119 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:53,807] LMCache INFO:[0m Stored 4096 tokens in 0.126 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:54,178] LMCache INFO:[0m Stored 4096 tokens in 0.127 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:54,554] LMCache INFO:[0m Stored 4096 tokens in 0.128 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:54,932] LMCache INFO:[0m Stored 4096 tokens in 0.129 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:55,315] LMCache INFO:[0m Stored 4096 tokens in 0.130 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:55,700] LMCache INFO:[0m Stored 4096 tokens in 0.131 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:56,089] LMCache INFO:[0m Stored 4096 tokens in 0.132 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:56,481] LMCache INFO:[0m Stored 4096 tokens in 0.133 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:56,874] LMCache INFO:[0m Stored 4096 tokens in 0.129 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:57,270] LMCache INFO:[0m Stored 4096 tokens in 0.134 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:57,670] LMCache INFO:[0m Stored 4096 tokens in 0.136 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:58,074] LMCache INFO:[0m Stored 4096 tokens in 0.137 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:58,479] LMCache INFO:[0m Stored 4096 tokens in 0.138 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:58,890] LMCache INFO:[0m Stored 4096 tokens in 0.140 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:59,303] LMCache INFO:[0m Stored 4096 tokens in 0.141 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:37:59,717] LMCache INFO:[0m Stored 4096 tokens in 0.140 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:00,138] LMCache INFO:[0m Stored 4096 tokens in 0.137 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:00,560] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:00,988] LMCache INFO:[0m Stored 4096 tokens in 0.146 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:01,417] LMCache INFO:[0m Stored 4096 tokens in 0.146 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:01,850] LMCache INFO:[0m Stored 4096 tokens in 0.148 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:02,286] LMCache INFO:[0m Stored 4096 tokens in 0.149 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:02,727] LMCache INFO:[0m Stored 4096 tokens in 0.151 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:03,170] LMCache INFO:[0m Stored 4096 tokens in 0.152 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:03,616] LMCache INFO:[0m Stored 4096 tokens in 0.153 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:04,065] LMCache INFO:[0m Stored 4096 tokens in 0.148 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:04,518] LMCache INFO:[0m Stored 4096 tokens in 0.155 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:04,973] LMCache INFO:[0m Stored 4096 tokens in 0.155 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:05,432] LMCache INFO:[0m Stored 4096 tokens in 0.157 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:05,893] LMCache INFO:[0m Stored 4096 tokens in 0.157 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:06,375] LMCache INFO:[0m Stored 4096 tokens in 0.146 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:06,862] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:07,343] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:07,826] LMCache INFO:[0m Stored 4096 tokens in 0.140 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:08,313] LMCache INFO:[0m Stored 4096 tokens in 0.146 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:08,802] LMCache INFO:[0m Stored 4096 tokens in 0.147 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:09,295] LMCache INFO:[0m Stored 4096 tokens in 0.148 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:09,790] LMCache INFO:[0m Stored 4096 tokens in 0.149 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:10,293] LMCache INFO:[0m Stored 4096 tokens in 0.148 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:10,798] LMCache INFO:[0m Stored 4096 tokens in 0.152 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:11,304] LMCache INFO:[0m Stored 4096 tokens in 0.152 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:11,814] LMCache INFO:[0m Stored 4096 tokens in 0.153 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:12,331] LMCache INFO:[0m Stored 4096 tokens in 0.150 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:12,848] LMCache INFO:[0m Stored 4096 tokens in 0.155 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:13,371] LMCache INFO:[0m Stored 4096 tokens in 0.157 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:13,896] LMCache INFO:[0m Stored 4096 tokens in 0.157 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:14,426] LMCache INFO:[0m Stored 4096 tokens in 0.159 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:14,958] LMCache INFO:[0m Stored 4096 tokens in 0.160 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:15,498] LMCache INFO:[0m Stored 4096 tokens in 0.162 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:16,037] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:16,581] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:17,127] LMCache INFO:[0m Stored 4096 tokens in 0.164 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:17,677] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:18,226] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:18,783] LMCache INFO:[0m Stored 4096 tokens in 0.167 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:19,340] LMCache INFO:[0m Stored 4096 tokens in 0.168 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:19,902] LMCache INFO:[0m Stored 4096 tokens in 0.168 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:20,468] LMCache INFO:[0m Stored 4096 tokens in 0.170 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:21,041] LMCache INFO:[0m Stored 4096 tokens in 0.172 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:21,612] LMCache INFO:[0m Stored 4096 tokens in 0.166 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:22,190] LMCache INFO:[0m Stored 4096 tokens in 0.173 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:22,774] LMCache INFO:[0m Stored 4096 tokens in 0.164 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:23,366] LMCache INFO:[0m Stored 4096 tokens in 0.152 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:23,959] LMCache INFO:[0m Stored 4096 tokens in 0.152 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:24,561] LMCache INFO:[0m Stored 4096 tokens in 0.156 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:25,154] LMCache INFO:[0m Stored 4096 tokens in 0.153 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:25,758] LMCache INFO:[0m Stored 4096 tokens in 0.151 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:26,363] LMCache INFO:[0m Stored 4096 tokens in 0.156 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:26,972] LMCache INFO:[0m Stored 4096 tokens in 0.156 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:27,585] LMCache INFO:[0m Stored 4096 tokens in 0.157 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:28,202] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:28,824] LMCache INFO:[0m Stored 4096 tokens in 0.159 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:29,453] LMCache INFO:[0m Stored 4096 tokens in 0.162 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:30,076] LMCache INFO:[0m Stored 4096 tokens in 0.156 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:30,704] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:31,338] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:31,975] LMCache INFO:[0m Stored 4096 tokens in 0.164 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:32,617] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:33,264] LMCache INFO:[0m Stored 4096 tokens in 0.167 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:33,911] LMCache INFO:[0m Stored 4096 tokens in 0.164 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:34,568] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:35,226] LMCache INFO:[0m Stored 4096 tokens in 0.168 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:35,878] LMCache INFO:[0m Stored 4096 tokens in 0.167 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:36,536] LMCache INFO:[0m Stored 4096 tokens in 0.168 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:37,201] LMCache INFO:[0m Stored 4096 tokens in 0.171 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:37,867] LMCache INFO:[0m Stored 4096 tokens in 0.171 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:38,541] LMCache INFO:[0m Stored 4096 tokens in 0.173 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:39,216] LMCache INFO:[0m Stored 4096 tokens in 0.168 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:39,900] LMCache INFO:[0m Stored 4096 tokens in 0.175 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:40,584] LMCache INFO:[0m Stored 4096 tokens in 0.175 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:41,274] LMCache INFO:[0m Stored 4096 tokens in 0.177 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:41,965] LMCache INFO:[0m Stored 4096 tokens in 0.176 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:42,665] LMCache INFO:[0m Stored 4096 tokens in 0.179 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:43,351] LMCache INFO:[0m Stored 4096 tokens in 0.176 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:44,072] LMCache INFO:[0m Stored 4096 tokens in 0.150 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:44,795] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:45,524] LMCache INFO:[0m Stored 4096 tokens in 0.159 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:46,252] LMCache INFO:[0m Stored 4096 tokens in 0.159 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:46,986] LMCache INFO:[0m Stored 4096 tokens in 0.160 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:47,723] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:48,469] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:49,217] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:49,962] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:50,709] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:51,462] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:52,219] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:52,984] LMCache INFO:[0m Stored 4096 tokens in 0.167 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:53,741] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:54,506] LMCache INFO:[0m Stored 4096 tokens in 0.162 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:55,275] LMCache INFO:[0m Stored 4096 tokens in 0.168 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:56,051] LMCache INFO:[0m Stored 4096 tokens in 0.171 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:56,828] LMCache INFO:[0m Stored 4096 tokens in 0.170 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:57,606] LMCache INFO:[0m Stored 4096 tokens in 0.171 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:58,389] LMCache INFO:[0m Stored 4096 tokens in 0.172 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:59,180] LMCache INFO:[0m Stored 4096 tokens in 0.174 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:38:59,972] LMCache INFO:[0m Stored 4096 tokens in 0.169 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:00,772] LMCache INFO:[0m Stored 4096 tokens in 0.176 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:01,566] LMCache INFO:[0m Stored 4096 tokens in 0.175 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:02,366] LMCache INFO:[0m Stored 4096 tokens in 0.176 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:03,169] LMCache INFO:[0m Stored 4096 tokens in 0.176 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:03,981] LMCache INFO:[0m Stored 4096 tokens in 0.178 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:04,794] LMCache INFO:[0m Stored 4096 tokens in 0.179 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:05,615] LMCache INFO:[0m Stored 4096 tokens in 0.176 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:06,428] LMCache INFO:[0m Stored 4096 tokens in 0.180 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:07,246] LMCache INFO:[0m Stored 4096 tokens in 0.181 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:08,072] LMCache INFO:[0m Stored 4096 tokens in 0.167 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:08,908] LMCache INFO:[0m Stored 4096 tokens in 0.154 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:09,749] LMCache INFO:[0m Stored 4096 tokens in 0.156 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:10,599] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:11,443] LMCache INFO:[0m Stored 4096 tokens in 0.150 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:12,293] LMCache INFO:[0m Stored 4096 tokens in 0.157 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:13,146] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:14,008] LMCache INFO:[0m Stored 4096 tokens in 0.159 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:14,874] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:15,744] LMCache INFO:[0m Stored 4096 tokens in 0.162 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:16,620] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:17,488] LMCache INFO:[0m Stored 4096 tokens in 0.155 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:18,358] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:19,235] LMCache INFO:[0m Stored 4096 tokens in 0.162 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:20,117] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:21,006] LMCache INFO:[0m Stored 4096 tokens in 0.164 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:21,898] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:22,795] LMCache INFO:[0m Stored 4096 tokens in 0.166 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:23,678] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:24,570] LMCache INFO:[0m Stored 4096 tokens in 0.165 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:25,467] LMCache INFO:[0m Stored 4096 tokens in 0.166 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:26,368] LMCache INFO:[0m Stored 4096 tokens in 0.166 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:39:27,270] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:23,655] LMCache INFO:[0m Stored 4096 tokens in 0.012 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:23,922] LMCache INFO:[0m Stored 4096 tokens in 0.014 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:24,186] LMCache INFO:[0m Stored 4096 tokens in 0.014 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:24,458] LMCache INFO:[0m Stored 4096 tokens in 0.020 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:24,728] LMCache INFO:[0m Stored 4096 tokens in 0.025 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:25,002] LMCache INFO:[0m Stored 4096 tokens in 0.024 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:25,280] LMCache INFO:[0m Stored 4096 tokens in 0.039 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:25,559] LMCache INFO:[0m Stored 4096 tokens in 0.051 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:25,844] LMCache INFO:[0m Stored 4096 tokens in 0.075 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:26,129] LMCache INFO:[0m Stored 4096 tokens in 0.097 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:26,420] LMCache INFO:[0m Stored 4096 tokens in 0.103 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:26,712] LMCache INFO:[0m Stored 4096 tokens in 0.110 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:27,008] LMCache INFO:[0m Stored 4096 tokens in 0.112 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:27,307] LMCache INFO:[0m Stored 4096 tokens in 0.113 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:27,610] LMCache INFO:[0m Stored 4096 tokens in 0.114 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:27,915] LMCache INFO:[0m Stored 4096 tokens in 0.115 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:28,225] LMCache INFO:[0m Stored 4096 tokens in 0.114 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:28,537] LMCache INFO:[0m Stored 4096 tokens in 0.118 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:28,852] LMCache INFO:[0m Stored 4096 tokens in 0.118 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:29,170] LMCache INFO:[0m Stored 4096 tokens in 0.120 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:29,491] LMCache INFO:[0m Stored 4096 tokens in 0.121 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:29,814] LMCache INFO:[0m Stored 4096 tokens in 0.122 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:30,141] LMCache INFO:[0m Stored 4096 tokens in 0.123 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:30,471] LMCache INFO:[0m Stored 4096 tokens in 0.124 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:30,804] LMCache INFO:[0m Stored 4096 tokens in 0.123 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:31,140] LMCache INFO:[0m Stored 4096 tokens in 0.127 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:31,479] LMCache INFO:[0m Stored 4096 tokens in 0.128 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:31,821] LMCache INFO:[0m Stored 4096 tokens in 0.129 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:32,166] LMCache INFO:[0m Stored 4096 tokens in 0.129 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:32,513] LMCache INFO:[0m Stored 4096 tokens in 0.131 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:32,864] LMCache INFO:[0m Stored 4096 tokens in 0.132 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:33,219] LMCache INFO:[0m Stored 4096 tokens in 0.134 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:33,582] LMCache INFO:[0m Stored 4096 tokens in 0.126 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:33,947] LMCache INFO:[0m Stored 4096 tokens in 0.124 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:34,316] LMCache INFO:[0m Stored 4096 tokens in 0.128 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:34,688] LMCache INFO:[0m Stored 4096 tokens in 0.129 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:35,062] LMCache INFO:[0m Stored 4096 tokens in 0.129 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:35,440] LMCache INFO:[0m Stored 4096 tokens in 0.131 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:35,821] LMCache INFO:[0m Stored 4096 tokens in 0.132 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:36,206] LMCache INFO:[0m Stored 4096 tokens in 0.133 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:36,595] LMCache INFO:[0m Stored 4096 tokens in 0.135 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:36,987] LMCache INFO:[0m Stored 4096 tokens in 0.136 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:37,382] LMCache INFO:[0m Stored 4096 tokens in 0.137 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:37,778] LMCache INFO:[0m Stored 4096 tokens in 0.137 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:38,179] LMCache INFO:[0m Stored 4096 tokens in 0.139 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:38,583] LMCache INFO:[0m Stored 4096 tokens in 0.140 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:38,990] LMCache INFO:[0m Stored 4096 tokens in 0.141 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:39,401] LMCache INFO:[0m Stored 4096 tokens in 0.142 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:39,816] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:40,232] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:40,653] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:41,077] LMCache INFO:[0m Stored 4096 tokens in 0.147 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:41,505] LMCache INFO:[0m Stored 4096 tokens in 0.148 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:41,936] LMCache INFO:[0m Stored 4096 tokens in 0.149 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:42,371] LMCache INFO:[0m Stored 4096 tokens in 0.151 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:42,808] LMCache INFO:[0m Stored 4096 tokens in 0.150 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:43,249] LMCache INFO:[0m Stored 4096 tokens in 0.154 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:43,693] LMCache INFO:[0m Stored 4096 tokens in 0.154 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:44,140] LMCache INFO:[0m Stored 4096 tokens in 0.155 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:44,591] LMCache INFO:[0m Stored 4096 tokens in 0.154 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:45,046] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:45,504] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:45,966] LMCache INFO:[0m Stored 4096 tokens in 0.160 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:46,427] LMCache INFO:[0m Stored 4096 tokens in 0.159 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:46,902] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:47,380] LMCache INFO:[0m Stored 4096 tokens in 0.145 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:47,864] LMCache INFO:[0m Stored 4096 tokens in 0.146 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:48,348] LMCache INFO:[0m Stored 4096 tokens in 0.144 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:48,838] LMCache INFO:[0m Stored 4096 tokens in 0.148 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:49,329] LMCache INFO:[0m Stored 4096 tokens in 0.149 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:49,824] LMCache INFO:[0m Stored 4096 tokens in 0.150 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:50,321] LMCache INFO:[0m Stored 4096 tokens in 0.150 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:50,825] LMCache INFO:[0m Stored 4096 tokens in 0.152 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:51,331] LMCache INFO:[0m Stored 4096 tokens in 0.153 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:51,840] LMCache INFO:[0m Stored 4096 tokens in 0.154 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:52,352] LMCache INFO:[0m Stored 4096 tokens in 0.155 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:52,870] LMCache INFO:[0m Stored 4096 tokens in 0.154 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:53,389] LMCache INFO:[0m Stored 4096 tokens in 0.157 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:53,912] LMCache INFO:[0m Stored 4096 tokens in 0.158 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:54,439] LMCache INFO:[0m Stored 4096 tokens in 0.159 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:54,971] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:55,505] LMCache INFO:[0m Stored 4096 tokens in 0.161 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:56,044] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:56,584] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:57,130] LMCache INFO:[0m Stored 4096 tokens in 0.166 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:57,673] LMCache INFO:[0m Stored 4096 tokens in 0.163 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:58,225] LMCache INFO:[0m Stored 4096 tokens in 0.166 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:58,775] LMCache INFO:[0m Stored 4096 tokens in 0.166 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:59,331] LMCache INFO:[0m Stored 4096 tokens in 0.168 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:40:59,890] LMCache INFO:[0m Stored 4096 tokens in 0.169 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:00,453] LMCache INFO:[0m Stored 4096 tokens in 0.170 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:01,022] LMCache INFO:[0m Stored 4096 tokens in 0.172 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:01,594] LMCache INFO:[0m Stored 4096 tokens in 0.173 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:02,166] LMCache INFO:[0m Stored 4096 tokens in 0.170 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:02,746] LMCache INFO:[0m Stored 4096 tokens in 0.175 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:03,329] LMCache INFO:[0m Stored 4096 tokens in 0.164 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:03,922] LMCache INFO:[0m Stored 4096 tokens in 0.153 seconds [3m(engine_driven_transfer.py:659:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+INFO:     127.0.0.1:58020 - "GET /metrics HTTP/1.1" 200 OK
+[32;20m[2026-09-07 09:41:34,782] LMCache INFO:[0m Prefetch request completed (L1+L2): 8/8 retained keys (8 L1, 0 L2) in 0.3 ms (external_request_id=cmpl-bec08a128367f25f-0-919cb9c8, prefetch_request_id=-1) [3m(storage_manager.py:855:lmcache.v1.distributed.storage_manager)[0m
+[32;20m[2026-09-07 09:41:34,797] LMCache INFO:[0m Retrieved 4096 tokens in 0.006 seconds [3m(engine_driven_transfer.py:742:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+[32;20m[2026-09-07 09:41:34,821] LMCache INFO:[0m AffinityThreadPool: affinity_key=6034682671736469437 assigned to worker slot 1 of 2 (thread affinity-pool-0-1); 2 distinct key(s) now bound [3m(affinity_pool.py:108:lmcache.v1.multiprocess.affinity_pool)[0m
+[32;20m[2026-09-07 09:41:34,828] LMCache INFO:[0m Retrieved 4096 tokens in 0.006 seconds [3m(engine_driven_transfer.py:742:lmcache.v1.multiprocess.modules.engine_driven_transfer)[0m
+INFO:     127.0.0.1:55166 - "GET /metrics HTTP/1.1" 200 OK

@@ -1,0 +1,188 @@
+{
+  "model": "ds4-vision-r8",
+  "image_sha256": "251fe7ad58f44db139a6af5ed489e027eca93ae60878b83f3e709c7d6f0112a1",
+  "temperature": 1.0,
+  "image_position": "before_reference_notes",
+  "records": [
+    {
+      "reference_repetitions": 0,
+      "repeat": 0,
+      "elapsed_seconds": 0.7621253809775226,
+      "usage": {
+        "prompt_tokens": 209,
+        "total_tokens": 337,
+        "completion_tokens": 128,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": {
+            "image": 108
+          }
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 128
+        }
+      },
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "refusal": null,
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "reasoning": "1.  **Analyze the Request:**\n    *   User provided an image.\n    *   User asked to \"Read the reference notes\" (though no notes were provided in the prompt, just the image) and \"identify the pictured ingredient.\"\n    *   User instructed to \"Name the ingredient in one sentence.\"\n    *   *Correction/Refinement:* Since there are no actual \"reference notes\" in the prompt, I will identify the ingredient directly based on the image. The image clearly shows corn on the cob.\n\n2.  **Analyze the Image:**\n    *   The image shows two cobs"
+      },
+      "finish_reason": "length"
+    },
+    {
+      "reference_repetitions": 0,
+      "repeat": 1,
+      "elapsed_seconds": 0.511746909993235,
+      "usage": {
+        "prompt_tokens": 209,
+        "total_tokens": 277,
+        "completion_tokens": 68,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": {
+            "image": 108
+          }
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 60
+        }
+      },
+      "message": {
+        "role": "assistant",
+        "content": "The pictured ingredient is corn.",
+        "refusal": null,
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "reasoning": "The user wants me to identify the ingredient pictured in the image. The image shows ears of corn. One ear has its husks peeled back to reveal the yellow kernels, while the other two are fully enclosed in green husks. The ingredient is corn. I need to name it in one sentence."
+      },
+      "finish_reason": "stop"
+    },
+    {
+      "reference_repetitions": 0,
+      "repeat": 2,
+      "elapsed_seconds": 0.7472058300045319,
+      "usage": {
+        "prompt_tokens": 209,
+        "total_tokens": 337,
+        "completion_tokens": 128,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": {
+            "image": 108
+          }
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 128
+        }
+      },
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "refusal": null,
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "reasoning": "1.  **Analyze the Request:**\n    *   Task: Identify the pictured ingredient based on the provided image.\n    *   Constraint: Name the ingredient in one sentence.\n    *   Reference notes: The user mentions \"reference notes\" but doesn't actually provide any text. I need to rely entirely on the visual evidence in the image.\n    *   Image Analysis: The image shows three ears of corn. One is partially husked, revealing bright yellow kernels. The others are still in their green husks. This is undeniably corn (or maize).\n\n2.  **Formulate the Response:**\n    *"
+      },
+      "finish_reason": "length"
+    },
+    {
+      "reference_repetitions": 320,
+      "repeat": 0,
+      "elapsed_seconds": 0.5449424310063478,
+      "usage": {
+        "prompt_tokens": 4049,
+        "total_tokens": 4105,
+        "completion_tokens": 56,
+        "prompt_tokens_details": {
+          "cached_tokens": 3840,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": {
+            "image": 108
+          }
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 45
+        }
+      },
+      "message": {
+        "role": "assistant",
+        "content": "The ingredient pictured is corn on the cob.",
+        "refusal": null,
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "reasoning": "We need to answer: \"Name the ingredient in one sentence.\" based on image. Image shows corn on the cob. Reference notes repeated \"sample 47 belongs to the botanical collection.\" Not needed. Answer in one sentence."
+      },
+      "finish_reason": "stop"
+    },
+    {
+      "reference_repetitions": 320,
+      "repeat": 1,
+      "elapsed_seconds": 0.5208207450050395,
+      "usage": {
+        "prompt_tokens": 4049,
+        "total_tokens": 4112,
+        "completion_tokens": 63,
+        "prompt_tokens_details": {
+          "cached_tokens": 3840,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": {
+            "image": 108
+          }
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 52
+        }
+      },
+      "message": {
+        "role": "assistant",
+        "content": "The pictured ingredient is corn (maize).",
+        "refusal": null,
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "reasoning": "We need to answer with the ingredient name in one sentence. The image shows corn on the cob. The reference notes just say sample 47 belongs to botanical collection, repeated. Ingredient: corn (maize). Combine: \"The pictured ingredient is corn.\""
+      },
+      "finish_reason": "stop"
+    },
+    {
+      "reference_repetitions": 320,
+      "repeat": 2,
+      "elapsed_seconds": 0.5310163380054291,
+      "usage": {
+        "prompt_tokens": 4049,
+        "total_tokens": 4110,
+        "completion_tokens": 61,
+        "prompt_tokens_details": {
+          "cached_tokens": 3840,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": {
+            "image": 108
+          }
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 50
+        }
+      },
+      "message": {
+        "role": "assistant",
+        "content": "The pictured ingredient is corn on the cob.",
+        "refusal": null,
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "reasoning": "We need to answer with the ingredient in one sentence. The image shows corn on the cob. The reference notes are repetitive but indicate \"sample 47 belongs to the botanical collection.\" That's just context. The ingredient is corn. Need one sentence."
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

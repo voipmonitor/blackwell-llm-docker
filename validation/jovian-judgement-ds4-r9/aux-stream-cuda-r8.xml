@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="6" time="19.817" timestamp="2026-09-06T23:16:47.739094+00:00" hostname="2cf0385a24fe"><testcase classname="test_multi_stream_utils" name="test_maybe_execute_in_parallel_preserves_aux_output_lifetime" time="10.764"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of type object at 0x732183a60ce0&gt;(tensor([93, 93, 93,  ..., 93, 93, 93], device='cuda:0', dtype=torch.uint8) == 17)&#10; +    where &lt;built-in method all of type object at 0x732183a60ce0&gt; = torch.all">@requires_cuda
+    def test_maybe_execute_in_parallel_preserves_aux_output_lifetime() -&gt; None:
+        event0 = torch.cuda.Event()
+        event1 = torch.cuda.Event()
+
+        def invoke(producer_stream: torch.cuda.Stream) -&gt; tuple[None, torch.Tensor]:
+            return maybe_execute_in_parallel(
+                lambda: None,
+                lambda: torch.full(
+                    (_ALLOCATION_BYTES,), 17, dtype=torch.uint8, device="cuda"
+                ),
+                event0,
+                event1,
+                producer_stream,
+            )
+
+&gt;       _assert_aux_output_lifetime(invoke, lambda result: result[1])
+
+tmp/test_multi_stream_utils.py:81:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+invoke = &lt;function test_maybe_execute_in_parallel_preserves_aux_output_lifetime.&lt;locals&gt;.invoke at 0x7320424daca0&gt;
+extract = &lt;function test_maybe_execute_in_parallel_preserves_aux_output_lifetime.&lt;locals&gt;.&lt;lambda&gt; at 0x7320424dad40&gt;
+
+    def _assert_aux_output_lifetime(
+        invoke: Callable[[torch.cuda.Stream], Any], extract: Callable[[Any], torch.Tensor]
+    ) -&gt; None:
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+
+        consumer_stream = torch.cuda.current_stream()
+        producer_stream = torch.cuda.Stream(priority=-1)
+        copied = torch.empty(_ALLOCATION_BYTES, dtype=torch.uint8, device="cuda")
+
+        # Resolve imports, events, and copy kernels before delaying the consumer.
+        warmup = invoke(producer_stream)
+        copied.copy_(extract(warmup))
+        torch.cuda._sleep(1)
+        torch.cuda.synchronize()
+        del warmup
+        torch.cuda.empty_cache()
+
+        result = invoke(producer_stream)
+        tensor = extract(result)
+        consumer_done = torch.cuda.Event()
+
+        torch.cuda._sleep(_CONSUMER_DELAY_CYCLES)
+        copied.copy_(tensor)
+        consumer_done.record()
+        del tensor, result
+
+        with torch.cuda.stream(producer_stream):
+            replacement = torch.full(
+                (_ALLOCATION_BYTES,), 93, dtype=torch.uint8, device="cuda"
+            )
+
+        producer_stream.synchronize()
+        consumer_was_pending = not consumer_done.query()
+        torch.cuda.synchronize()
+        assert consumer_was_pending, "The test must overwrite while the consumer is pending"
+&gt;       assert torch.all(copied == 17)
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of type object at 0x732183a60ce0&gt;(tensor([93, 93, 93,  ..., 93, 93, 93], device='cuda:0', dtype=torch.uint8) == 17)
+E        +    where &lt;built-in method all of type object at 0x732183a60ce0&gt; = torch.all
+
+tmp/test_multi_stream_utils.py:60: AssertionError</failure></testcase><testcase classname="test_multi_stream_utils" name="test_execute_in_parallel_preserves_nested_aux_output_lifetime" time="6.644"><failure message="AssertionError: assert tensor(False, device='cuda:0')&#10; +  where tensor(False, device='cuda:0') = &lt;built-in method all of type object at 0x732183a60ce0&gt;(tensor([93, 93, 93,  ..., 93, 93, 93], device='cuda:0', dtype=torch.uint8) == 17)&#10; +    where &lt;built-in method all of type object at 0x732183a60ce0&gt; = torch.all">@requires_cuda
+    def test_execute_in_parallel_preserves_nested_aux_output_lifetime() -&gt; None:
+        start_event = torch.cuda.Event()
+        done_event = torch.cuda.Event()
+
+        def invoke(producer_stream: torch.cuda.Stream) -&gt; tuple[None, list[Any]]:
+            return execute_in_parallel(
+                lambda: None,
+                [
+                    lambda: {
+                        "output": (
+                            torch.full(
+                                (_ALLOCATION_BYTES,),
+                                17,
+                                dtype=torch.uint8,
+                                device="cuda",
+                            ),
+                        )
+                    }
+                ],
+                start_event,
+                [done_event],
+                [producer_stream],
+                enable=True,
+            )
+
+&gt;       _assert_aux_output_lifetime(invoke, lambda result: result[1][0]["output"][0])
+
+tmp/test_multi_stream_utils.py:110:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+invoke = &lt;function test_execute_in_parallel_preserves_nested_aux_output_lifetime.&lt;locals&gt;.invoke at 0x731d55d26840&gt;
+extract = &lt;function test_execute_in_parallel_preserves_nested_aux_output_lifetime.&lt;locals&gt;.&lt;lambda&gt; at 0x731d55d268e0&gt;
+
+    def _assert_aux_output_lifetime(
+        invoke: Callable[[torch.cuda.Stream], Any], extract: Callable[[Any], torch.Tensor]
+    ) -&gt; None:
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+
+        consumer_stream = torch.cuda.current_stream()
+        producer_stream = torch.cuda.Stream(priority=-1)
+        copied = torch.empty(_ALLOCATION_BYTES, dtype=torch.uint8, device="cuda")
+
+        # Resolve imports, events, and copy kernels before delaying the consumer.
+        warmup = invoke(producer_stream)
+        copied.copy_(extract(warmup))
+        torch.cuda._sleep(1)
+        torch.cuda.synchronize()
+        del warmup
+        torch.cuda.empty_cache()
+
+        result = invoke(producer_stream)
+        tensor = extract(result)
+        consumer_done = torch.cuda.Event()
+
+        torch.cuda._sleep(_CONSUMER_DELAY_CYCLES)
+        copied.copy_(tensor)
+        consumer_done.record()
+        del tensor, result
+
+        with torch.cuda.stream(producer_stream):
+            replacement = torch.full(
+                (_ALLOCATION_BYTES,), 93, dtype=torch.uint8, device="cuda"
+            )
+
+        producer_stream.synchronize()
+        consumer_was_pending = not consumer_done.query()
+        torch.cuda.synchronize()
+        assert consumer_was_pending, "The test must overwrite while the consumer is pending"
+&gt;       assert torch.all(copied == 17)
+E       AssertionError: assert tensor(False, device='cuda:0')
+E        +  where tensor(False, device='cuda:0') = &lt;built-in method all of type object at 0x732183a60ce0&gt;(tensor([93, 93, 93,  ..., 93, 93, 93], device='cuda:0', dtype=torch.uint8) == 17)
+E        +    where &lt;built-in method all of type object at 0x732183a60ce0&gt; = torch.all
+
+tmp/test_multi_stream_utils.py:60: AssertionError</failure></testcase><testcase classname="test_multi_stream_utils" name="test_sequential_execution_preserves_results_and_order[pair]" time="0.000" /><testcase classname="test_multi_stream_utils" name="test_sequential_execution_preserves_results_and_order[fanout]" time="0.000" /><testcase classname="test_multi_stream_utils" name="test_parallel_cuda_graph_replay_preserves_outputs[pair]" time="0.018" /><testcase classname="test_multi_stream_utils" name="test_parallel_cuda_graph_replay_preserves_outputs[fanout]" time="0.003" /></testsuite></testsuites>
