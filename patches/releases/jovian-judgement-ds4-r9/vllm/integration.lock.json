@@ -7,7 +7,7 @@
   "composition": null,
   "composition_strategy": "cherry_pick",
   "manifest": {
-    "sha256": "4efa7fe94f39e3c1dc15b80517d7a40c4d9849ce3159ea73158729d6b31033a3"
+    "sha256": "a587de582088ecf340da0cd9fb1eb50137ea07532746d97196c09de5ec3e90cd"
   },
   "name": "jovian-judgement-deepseek-v4-flash-vllm-r9",
   "pull_requests": [
@@ -88,10 +88,11 @@
     },
     {
       "commits": [
-        "dd8e5ca35f5ec9af0ce7d44ad0aabcb4a550d329"
+        "dd8e5ca35f5ec9af0ce7d44ad0aabcb4a550d329",
+        "d84208d424a16b15edc5f6e7e4326ec9d3409b1e"
       ],
       "disposition": "cherry_picked",
-      "head": "dd8e5ca35f5ec9af0ce7d44ad0aabcb4a550d329",
+      "head": "d84208d424a16b15edc5f6e7e4326ec9d3409b1e",
       "number": 694,
       "ref": "refs/pull/694/head",
       "title": "Count graph memory once in post-capture KV recommendations"
@@ -109,8 +110,8 @@
   ],
   "result": {
     "patch": "integration.patch",
-    "patch_sha256": "0dfd6b7a97f8a94190410f6a94d3712cdf573cddcd881b47d814242c9ea0ed19",
-    "tree": "ec1f133fa64853d5501d9a72007f8915a9d0de91"
+    "patch_sha256": "da6a7d576065d0fa30e1a66da1a94c5120ab4548c281017079f16d6c847b4e0b",
+    "tree": "f66599d9a90d57172fd26ca5b9116f381b582b94"
   },
   "schema_version": 1,
   "source_patches": []

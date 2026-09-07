@@ -64,7 +64,11 @@
     },
     {
       "number": 694,
-      "head": "dd8e5ca35f5ec9af0ce7d44ad0aabcb4a550d329",
+      "head": "d84208d424a16b15edc5f6e7e4326ec9d3409b1e",
+      "commits": [
+        "dd8e5ca35f5ec9af0ce7d44ad0aabcb4a550d329",
+        "d84208d424a16b15edc5f6e7e4326ec9d3409b1e"
+      ],
       "title": "Count graph memory once in post-capture KV recommendations"
     },
     {

@@ -31,7 +31,7 @@ verify_lock() {
 
 verify_lock vllm \
   2a979314dc97b03173a0a76fc15664ec924db32b \
-  ec1f133fa64853d5501d9a72007f8915a9d0de91 \
+  f66599d9a90d57172fd26ca5b9116f381b582b94 \
   '[628,630,634,553,671,679,694,695]'
 verify_lock b12x \
   06b4de7c723e6f166d65abf5909c5b7d0f8acc68 \
@@ -44,13 +44,13 @@ verify_lock lmcache \
 
 output="$(PRINT_RELEASE_CONFIG=1 "${builder}")"
 grep -Fxq 'revision=r9' <<<"${output}"
-grep -Fxq 'vllm_tree=ec1f133fa64853d5501d9a72007f8915a9d0de91' \
+grep -Fxq 'vllm_tree=f66599d9a90d57172fd26ca5b9116f381b582b94' \
   <<<"${output}"
 grep -Fxq 'b12x_tree=15b6813011bd47e466b39f9b474b3bca0c48c8e8' \
   <<<"${output}"
 grep -Fxq 'lmcache_tree=d85748de9bf985dabc00c044396a3b8de97f4ac1' \
   <<<"${output}"
-grep -Fq 'jovian-judgement-vllmec1f133-b12x15b6813-fi803c466-cu133-torch213-20260907-r9' \
+grep -Fq 'jovian-judgement-vllmf66599d-b12x15b6813-fi803c466-cu133-torch213-20260907-r9' \
   <<<"${output}"
 
 config="$(docker compose -f "${compose}" config)"
@@ -66,7 +66,7 @@ grep -Fq 'LMCACHE_CHUNK_SIZE: "4096"' <<<"${config}"
 grep -Fq 'LMCACHE_SEPARATE_OBJECT_GROUPS: "1"' <<<"${config}"
 grep -Fq 'LOAD_FORMAT: instanttensor' <<<"${config}"
 grep -Fq 'INSTANTTENSOR_BACKEND: BUFFERED' <<<"${config}"
-grep -Fq 'jovian-judgement-vllmec1f133-b12x15b6813-fi803c466' <<<"${config}"
+grep -Fq 'jovian-judgement-vllmf66599d-b12x15b6813-fi803c466' <<<"${config}"
 
 vision_config="$(docker compose -f "${vision_compose}" config)"
 grep -Fq 'DS4_MODEL_VARIANT: vision' <<<"${vision_config}"
@@ -81,7 +81,7 @@ grep -Fq 'LMCACHE_MODE: "off"' <<<"${vision_config}"
 grep -Fq 'LMCACHE_TRANSFER_MODE: engine_driven' <<<"${vision_config}"
 grep -Fq 'LOAD_FORMAT: instanttensor' <<<"${vision_config}"
 grep -Fq 'INSTANTTENSOR_BACKEND: BUFFERED' <<<"${vision_config}"
-grep -Fq 'jovian-judgement-vllmec1f133-b12x15b6813-fi803c466' \
+grep -Fq 'jovian-judgement-vllmf66599d-b12x15b6813-fi803c466' \
   <<<"${vision_config}"
 
 grep -Fq 'ARG LMCACHE_BUILD_VERSION=0.5.2+jj.ds4.r6' \

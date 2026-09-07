@@ -12,7 +12,7 @@
 # requirement; the Spark launcher selects that loader independently.
 services:
   ds4:
-    image: ${IMAGE:-voipmonitor/vllm:jovian-judgement-vllmec1f133-b12x15b6813-fi803c466-cu133-torch213-20260907-r9}
+    image: ${IMAGE:-voipmonitor/vllm:jovian-judgement-vllmf66599d-b12x15b6813-fi803c466-cu133-torch213-20260907-r9}
     container_name: ${NAME:-ds4-dspark-jovian-judgement-r9}
     entrypoint:
       - /usr/local/bin/lmcache-mp-wrapper.sh
