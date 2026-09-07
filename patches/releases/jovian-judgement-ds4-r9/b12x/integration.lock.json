@@ -1,0 +1,34 @@
+{
+  "base": {
+    "commit": "06b4de7c723e6f166d65abf5909c5b7d0f8acc68",
+    "ref": "refs/heads/master",
+    "repository": "https://github.com/local-inference-lab/b12x.git"
+  },
+  "composition": null,
+  "composition_strategy": "cherry_pick",
+  "manifest": {
+    "sha256": "952bc1ff0ce2f06092a36bdcda94eedd7166791477bfc7a4cc3b9e35e1656596"
+  },
+  "name": "jovian-judgement-deepseek-v4-flash-b12x-r9",
+  "pull_requests": [
+    {
+      "commits": [
+        "49e598f62816a0451077d6c3c117b583cc79ca29",
+        "91ada9ae69d6ae317bdb2208d24df58b40365af8",
+        "223f88c23601689057d07700bedc650eac521526"
+      ],
+      "disposition": "cherry_picked",
+      "head": "223f88c23601689057d07700bedc650eac521526",
+      "number": 301,
+      "ref": "refs/pull/301/head",
+      "title": "Support FP8 DeepSeek V4 dual-cache prefill"
+    }
+  ],
+  "result": {
+    "patch": "integration.patch",
+    "patch_sha256": "22ad26e21426d89093830c580736ce9386902379c0a32ad8db942aa22b5aaf59",
+    "tree": "15b6813011bd47e466b39f9b474b3bca0c48c8e8"
+  },
+  "schema_version": 1,
+  "source_patches": []
+}

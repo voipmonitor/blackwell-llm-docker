@@ -3,9 +3,9 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 builder="${repo_root}/build-deepseek-jovian-judgement-cu133-torch213.sh"
-compose="${repo_root}/examples/docker-compose-ds4-dspark-jovian-judgement-r8.yml"
-vision_compose="${repo_root}/examples/docker-compose-ds4-vision-jovian-judgement-r8.yml"
-composition_root="${repo_root}/patches/releases/jovian-judgement-ds4-r8"
+compose="${repo_root}/examples/docker-compose-ds4-dspark-jovian-judgement-r9.yml"
+vision_compose="${repo_root}/examples/docker-compose-ds4-vision-jovian-judgement-r9.yml"
+composition_root="${repo_root}/patches/releases/jovian-judgement-ds4-r9"
 
 verify_lock() {
   local component=$1 expected_base=$2 expected_tree=$3 expected_prs=$4
@@ -30,28 +30,27 @@ verify_lock() {
 }
 
 verify_lock vllm \
-  7d66922a7bf0c9c7efe9a35a87df128f6b24e762 \
-  d267ca78d0d07e3993093b023844619af41a5e11 \
-  '[628,630,634,553,671,679]'
+  2a979314dc97b03173a0a76fc15664ec924db32b \
+  ec1f133fa64853d5501d9a72007f8915a9d0de91 \
+  '[628,630,634,553,671,679,694,695]'
 verify_lock b12x \
-  a1bbd02781c7505754e7aa58a959c1a77891c690 \
-  e58515a63b7b5d15bbc523258e1e338f49698ce3 \
-  '[246,301]'
+  06b4de7c723e6f166d65abf5909c5b7d0f8acc68 \
+  15b6813011bd47e466b39f9b474b3bca0c48c8e8 \
+  '[301]'
 verify_lock lmcache \
   7ed4675404a31f4ffafd98975899dc83832ba965 \
-  86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58 \
+  d85748de9bf985dabc00c044396a3b8de97f4ac1 \
   '[49,50,51,55,56]'
 
-output="$(PRINT_RELEASE_CONFIG=1 RELEASE_DATE=20260906 REVISION=r8 \
-  COMPOSITION_ROOT="${composition_root}" "${builder}")"
-grep -Fxq 'revision=r8' <<<"${output}"
-grep -Fxq 'vllm_tree=d267ca78d0d07e3993093b023844619af41a5e11' \
+output="$(PRINT_RELEASE_CONFIG=1 "${builder}")"
+grep -Fxq 'revision=r9' <<<"${output}"
+grep -Fxq 'vllm_tree=ec1f133fa64853d5501d9a72007f8915a9d0de91' \
   <<<"${output}"
-grep -Fxq 'b12x_tree=e58515a63b7b5d15bbc523258e1e338f49698ce3' \
+grep -Fxq 'b12x_tree=15b6813011bd47e466b39f9b474b3bca0c48c8e8' \
   <<<"${output}"
-grep -Fxq 'lmcache_tree=86ee2a3bb5675cd3a25b09ad3e2f20dad4720f58' \
+grep -Fxq 'lmcache_tree=d85748de9bf985dabc00c044396a3b8de97f4ac1' \
   <<<"${output}"
-grep -Fq 'jovian-judgement-vllmd267ca7-b12xe58515a-fi803c466-cu133-torch213-20260906-r8' \
+grep -Fq 'jovian-judgement-vllmec1f133-b12x15b6813-fi803c466-cu133-torch213-20260907-r9' \
   <<<"${output}"
 
 config="$(docker compose -f "${compose}" config)"
@@ -67,7 +66,7 @@ grep -Fq 'LMCACHE_CHUNK_SIZE: "4096"' <<<"${config}"
 grep -Fq 'LMCACHE_SEPARATE_OBJECT_GROUPS: "1"' <<<"${config}"
 grep -Fq 'LOAD_FORMAT: instanttensor' <<<"${config}"
 grep -Fq 'INSTANTTENSOR_BACKEND: BUFFERED' <<<"${config}"
-grep -Fq 'jovian-judgement-vllmd267ca7-b12xe58515a-fi803c466' <<<"${config}"
+grep -Fq 'jovian-judgement-vllmec1f133-b12x15b6813-fi803c466' <<<"${config}"
 
 vision_config="$(docker compose -f "${vision_compose}" config)"
 grep -Fq 'DS4_MODEL_VARIANT: vision' <<<"${vision_config}"
@@ -82,7 +81,7 @@ grep -Fq 'LMCACHE_MODE: "off"' <<<"${vision_config}"
 grep -Fq 'LMCACHE_TRANSFER_MODE: engine_driven' <<<"${vision_config}"
 grep -Fq 'LOAD_FORMAT: instanttensor' <<<"${vision_config}"
 grep -Fq 'INSTANTTENSOR_BACKEND: BUFFERED' <<<"${vision_config}"
-grep -Fq 'jovian-judgement-vllmd267ca7-b12xe58515a-fi803c466' \
+grep -Fq 'jovian-judgement-vllmec1f133-b12x15b6813-fi803c466' \
   <<<"${vision_config}"
 
 grep -Fq 'ARG LMCACHE_BUILD_VERSION=0.5.2+jj.ds4.r6' \
@@ -90,4 +89,4 @@ grep -Fq 'ARG LMCACHE_BUILD_VERSION=0.5.2+jj.ds4.r6' \
 grep -Fq 'LMCACHE_AUTO_TRANSFER_MODE=engine_driven' \
   "${repo_root}/Dockerfile.deepseek-infernal-invocation-cu133-torch213"
 
-printf 'DeepSeek Jovian Judgement r8 release contract: PASS\n'
+printf 'DeepSeek Jovian Judgement r9 release contract: PASS\n'

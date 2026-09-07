@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "name": "jovian-judgement-deepseek-v4-flash-lmcache-r9",
+  "repository": "https://github.com/local-inference-lab/LMCache.git",
+  "base_ref": "refs/heads/dev",
+  "composition_strategy": "cherry_pick",
+  "pull_requests": [
+    {
+      "number": 49,
+      "head": "0bdb4a3eec525b327a2968cb608e000a4fe6eb43",
+      "commits": [
+        "3e8601aab9c4a9bfe3a8a05aec8a565a944da7fb",
+        "31b704d19610745fb1d30e9f725a6ad4e269d90b",
+        "a952cedd5f3941339f845b1d0c95b2403fbfdc4c",
+        "5c57de29557d8c0ff7bcbd1ae35c222608186d0b",
+        "0bdb4a3eec525b327a2968cb608e000a4fe6eb43"
+      ],
+      "title": "Preserve oversized filesystem cache keys across native restarts"
+    },
+    {
+      "number": 50,
+      "head": "94c5514a26e5eca22296995235f0e0df6b4f458d",
+      "title": "Reuse registered CUDA metadata for engine-driven paged transfers"
+    },
+    {
+      "number": 51,
+      "head": "63919a2c6c310f9b34de7049b9b28b77fab13ca0",
+      "commits": [
+        "24e9a80c31a5ec56fd821f6d328223982e694c67",
+        "63919a2c6c310f9b34de7049b9b28b77fab13ca0"
+      ],
+      "title": "Manage named shared-memory capacity safely"
+    },
+    {
+      "number": 55,
+      "head": "078199fa3e08a0a515eae738194d29119d523b2f",
+      "commits": [
+        "55f50e084f158f11fe2f91014ded17e3bc94420c",
+        "078199fa3e08a0a515eae738194d29119d523b2f"
+      ],
+      "title": "Backport engine-driven async-copy lifetime synchronization"
+    },
+    {
+      "number": 56,
+      "head": "a726d4673d1f4b1219fd35e5183c9e38bd9ae119",
+      "title": "Report engine-driven shared-memory transport identity"
+    }
+  ],
+  "source_patches": []
+}
