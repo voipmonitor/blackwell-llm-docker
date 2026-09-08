@@ -33,7 +33,7 @@ These source refs are **implemented**, not by themselves release approval.
 |---|---|---|
 | `vllm-source` | [voipmonitor/vllm](https://github.com/voipmonitor/vllm/tree/integration/glm-fp8-checkpoint-serving-20260908) | `2531689fa50b956d3e1156e1ab80d119aaf34c1e` |
 | `b12x-source` | [voipmonitor/b12x](https://github.com/voipmonitor/b12x/tree/integration/glm-fp8-checkpoint-serving-20260908) | `3edbcbce70f491741b82f5eab9c1b30b39447228` |
-| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/integration/glm-fp8-checkpoint-serving-20260908) | `7d3b16a46af3e6c9e87d6331737a3835f627d3aa` |
+| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/integration/glm-fp8-checkpoint-serving-20260908) | `6168170f646bc5821ad354f1bfc10f3a98ff376e` |
 
 Clone the `integration/glm-fp8-checkpoint-serving-20260908` branch of each
 repository into its checkout directory, then verify `git rev-parse HEAD`
@@ -104,6 +104,10 @@ Modes use `SPECULATOR=mtp MTP_DEPTH=0`, `SPECULATOR=mtp MTP_DEPTH=3`, or
 `CACHE_MODE=lmcache`; its default transfer is `engine_driven`. Semantic
 checkpoints use immutable all-rank storage and asynchronous shared-memory
 copies performed by vLLM workers, without a sidecar CUDA context.
+Checkpoint payload namespaces are scoped to rank and storage group so that
+unlocked pages remain evictable under RAM pressure. Complete manifests and
+transfer leases enforce atomic retrieval. Version-1 semantic payloads are
+incompatible with these version-2 keys and produce safe cache misses.
 
 Mode-specific deployment instructions and measured conditions belong in the
 [GLM-5.3-Flash wiki](https://github.com/local-inference-lab/rtx6kpro/blob/master/models/glm-5.3-flash.md).
