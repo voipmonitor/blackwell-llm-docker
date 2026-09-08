@@ -27,6 +27,14 @@ max_num_seqs=${MAX_NUM_SEQS:-32}
 max_model_len=${MAX_MODEL_LEN:-1048576}
 max_num_batched_tokens=${MAX_NUM_BATCHED_TOKENS:-4096}
 prefill_schedule_interval=${PREFILL_SCHEDULE_INTERVAL:-8}
+prefill_interval_from_cli=0
+for argument in "$@"; do
+  case "${argument}" in
+    --prefill-schedule-interval | --prefill-schedule-interval=*)
+      prefill_interval_from_cli=1
+      ;;
+  esac
+done
 max_cudagraph_capture_size=${MAX_CUDAGRAPH_CAPTURE_SIZE:-128}
 gpu_memory_utilization=${GPU_MEMORY_UTILIZATION:-0.93}
 load_format=${LOAD_FORMAT:-instanttensor}
@@ -61,7 +69,8 @@ if [[ ! "${cp_kv_cache_interleave_size}" =~ ^[1-9][0-9]*$ ]]; then
     "${cp_kv_cache_interleave_size}" >&2
   exit 2
 fi
-if [[ ! "${prefill_schedule_interval}" =~ ^[1-9][0-9]*$ ]]; then
+if ((prefill_interval_from_cli == 0)) &&
+  [[ ! "${prefill_schedule_interval}" =~ ^[1-9][0-9]*$ ]]; then
   printf 'PREFILL_SCHEDULE_INTERVAL must be a positive integer; got %s\n' \
     "${prefill_schedule_interval}" >&2
   exit 2
@@ -211,7 +220,6 @@ cmd=(
   --max-num-seqs "${max_num_seqs}"
   --max-model-len "${max_model_len}"
   --max-num-batched-tokens "${max_num_batched_tokens}"
-  --prefill-schedule-interval "${prefill_schedule_interval}"
   --max-cudagraph-capture-size "${max_cudagraph_capture_size}"
   --gpu-memory-utilization "${gpu_memory_utilization}"
   --mamba-cache-mode align
@@ -236,6 +244,10 @@ cmd=(
   --compilation-config
   "{\"cudagraph_mode\":\"${cudagraph_mode}\"}"
 )
+
+if ((prefill_interval_from_cli == 0)); then
+  cmd+=(--prefill-schedule-interval "${prefill_schedule_interval}")
+fi
 
 if ((b12x_pcie_allreduce == 0)); then
   cmd+=(--disable-custom-all-reduce)

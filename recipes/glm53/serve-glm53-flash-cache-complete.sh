@@ -3,6 +3,10 @@ set -euo pipefail
 
 readonly cache_launcher=/usr/local/libexec/serve-glm53-flash-lmcache-cache-complete.sh
 
+if (($# == 1)) && [[ $1 == --help || $1 == -h ]]; then
+  exec /usr/local/bin/serve-glm53-flash-nvfp4-dflash2.sh "$@"
+fi
+
 # Explicit cache policy or geometry also selects the cache-mode contract. With
 # no cache-related setting, preserve the image's ordinary serving command.
 explicit_checkpoint_policy=0

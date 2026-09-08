@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+FROM voipmonitor/vllm@sha256:f5f121e37fd2afbb6f8f036e7eb627435cfb736de0a4420306dc2a25b6631669
+
+ARG SOURCE_LOCK_SHA256
+ARG CACHE_FINGERPRINT
+RUN --mount=type=bind,source=.,target=/recipe,readonly \
+    --mount=type=bind,from=source_bundles,target=/inputs,readonly \
+    SOURCE_LOCK_SHA256=${SOURCE_LOCK_SHA256} \
+    /opt/venv/bin/python /recipe/install_glm53_scheduler_overlay.py
+
+ENV LOCAL_INFERENCE_CACHE_FINGERPRINT=${CACHE_FINGERPRINT} \
+    XDG_CACHE_HOME=/cache/jit/${CACHE_FINGERPRINT} \
+    VLLM_CACHE_ROOT=/cache/jit/${CACHE_FINGERPRINT}/vllm \
+    VLLM_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/vllm \
+    TRITON_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/triton \
+    TORCHINDUCTOR_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/torchinductor \
+    CUTE_DSL_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/cute-dsl \
+    B12X_CUTE_COMPILE_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/b12x/cute \
+    B12X_COMPILE_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/b12x/compile \
+    SPARKINFER_COMPILE_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/b12x/compile \
+    CUDA_CACHE_PATH=/cache/jit/${CACHE_FINGERPRINT}/cuda

@@ -87,6 +87,64 @@ uv run --no-project --with pytest python -m pytest -q tests/test_build_contract.
 
 ## Serving contract
 
+### Python scheduler overlay
+
+Status: implemented; GPU qualification is recorded per image in the linked
+model runbook. `Dockerfile.glm53-scheduler-overlay` applies scheduler Python
+sources and launcher controls to the immutable R28 FP8 image without replacing
+CUDA, PyTorch, B12X, FlashKDA, NCCL, or LMCache. It produces three filesystem
+layers. The installed Git history remains complete; the incremental bundle
+requires the parent image's authenticated source objects.
+
+Extract the parent manifest and prepare the overlay from a clean vLLM checkout:
+
+```bash
+docker run --rm --entrypoint /bin/cat \
+  voipmonitor/vllm@sha256:f5f121e37fd2afbb6f8f036e7eb627435cfb736de0a4420306dc2a25b6631669 \
+  /opt/glm53-flash/source.lock > r28.source.lock
+uv run --no-project prepare_glm53_scheduler_overlay.py \
+  --vllm ./vllm-source --parent-lock ./r28.source.lock \
+  --uv "$(command -v uv)" --output ./scheduler-bundles \
+  --release-name jovian-judgement-community-20260908-r28.1 \
+  --release-version r28.1
+bash build_glm53_scheduler_overlay.sh ./scheduler-bundles local/glm53:scheduler
+```
+
+The preparer rejects changes outside the scheduler and its tests. The installer
+verifies the parent manifest, source trees, input hashes, and FlashKDA binary.
+Generated vLLM version metadata identifies the installed Python source; native
+component identities remain those in the manifest. A changed source lock
+produces safe external-checkpoint misses across image versions. It does not
+reinterpret persistent checkpoints written by another runtime identity.
+
+### Scheduler controls
+
+The image retains fixed prefill compute share `0.4`, schedule interval `1`, and
+one prefill lane. Interleaving is opt-in. Explicit CLI values override the
+corresponding environment variable and are emitted only once.
+
+| Environment | vLLM option | Values |
+|---|---|---|
+| `PREFILL_COMPUTE_SHARE` | `--prefill-compute-share` | `auto` or finite float strictly between 0 and 1 |
+| `PREFILL_COMPUTE_HALF_LIFE` | `--prefill-compute-half-life` | `smooth`, `responsive`, or positive finite seconds; requires auto share |
+| `MAX_PARALLEL_PREFILLS` | `--max-parallel-prefills` | `auto` or positive integer |
+| `PREFILL_POLICY` | `--prefill-policy` | `round-robin` or `decode-aware` |
+| `DECODE_REFILL_TARGET` | `--decode-refill-target` | `auto` or positive integer |
+
+Automatic lane count is `min(4, max_num_seqs)`, independently of attention,
+recurrent, or LMCache object geometry. The scheduler token budget still limits
+each forward pass. With automatic refill, the refill target follows the
+effective lane count. A numeric fixed share rejects any half-life setting.
+Compute-share scheduling requires interval `1`.
+
+`FAIRNESS_ENGINE=none` suppresses the inherited environment share; an explicit
+CLI share remains authoritative. `FAIRNESS_ENGINE=compute_share` is supported
+for compatibility, while `micro_slicing` is rejected. `--help` lists the
+controls without loading models. `CACHE_MODE=vram DRY_RUN=1` prints the full
+command. Unit tests run with `uv run --no-project --with pytest pytest -q tests`.
+
+### Models and cache
+
 The installed launcher is `/usr/local/bin/serve-glm53-flash.sh`. Model defaults
 are `local-inference-lab/GLM-5.3-Flash-NVFP4` and
 `local-inference-lab/GLM-5.3-Flash-DFlash2`; revisions are resolved at startup.
