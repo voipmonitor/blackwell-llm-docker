@@ -93,6 +93,13 @@ are `local-inference-lab/GLM-5.3-Flash-NVFP4` and
 The latter checkpoint contains offline MXFP8 draft weights. A changed model or
 runtime identity cannot reuse an incompatible external recurrent checkpoint.
 
+The GLM launcher supplies `--default-chat-template-kwargs
+'{"reasoning_effort":"high"}'`. A chat request can override that default with
+`"reasoning_effort":"max"`, `"high"`, or `"low"`; this does not change
+`max_tokens` or the parser. Without a server/request override, the checkpoint's
+chat template selects `max`. Direct `vllm serve` commands bypass this launcher's
+defaults and must provide the option themselves.
+
 The production scheduler budget is 4096 tokens, OMP threads1, NCCL channels16
 with 2 MiB buffers, and `FULL_AND_PIECEWISE` CUDA graphs. GPU-local attention
 pages default to2048 tokens. Target operations use B12X; FlashKDA supplies

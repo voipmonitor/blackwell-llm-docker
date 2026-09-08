@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+FROM voipmonitor/vllm@sha256:f5f121e37fd2afbb6f8f036e7eb627435cfb736de0a4420306dc2a25b6631669
+
+ARG SOURCE_LOCK_SHA256
+# The reasoning default changes only request rendering. Target/draft weights,
+# model kernels, cache implementation, and collective policies remain pinned.
+RUN --mount=type=bind,source=serve-glm53-flash-nvfp4-dflash2.sh,target=/inputs/launcher,readonly \
+    --mount=type=bind,source=reasoning-high.source.lock,target=/inputs/source.lock,readonly \
+    test "$(sha256sum /inputs/source.lock | cut -d' ' -f1)" = "${SOURCE_LOCK_SHA256}" && \
+    test "$(sha256sum /inputs/launcher | cut -d' ' -f1)" = \
+        "$(awk -F= '$1 == "input.serve-glm53-flash-nvfp4-dflash2.sh.sha256" {print $2}' /inputs/source.lock)" && \
+    install -m755 /inputs/launcher /usr/local/libexec/serve-glm53-flash-nvfp4-dflash2.sh && \
+    install -m644 /inputs/source.lock /opt/glm53-flash/source.lock
+
+LABEL org.opencontainers.image.version="r28-high" \
+    local-inference.release.name="jovian-judgement-community-20260908-r28-high" \
+    local-inference.release.overlay2-rootfs-layers="3" \
+    local-inference.runtime.default.reasoning-effort="high" \
+    local-inference.runtime.source-lock.sha256="${SOURCE_LOCK_SHA256}"

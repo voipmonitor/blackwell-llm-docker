@@ -228,6 +228,9 @@ cmd=(
   --enable-auto-tool-choice
   --tool-call-parser glm47
   --reasoning-parser glm45
+  # GLM's checkpoint template otherwise selects max reasoning. Server defaults
+  # apply only when the request omits an explicit reasoning effort.
+  --default-chat-template-kwargs '{"reasoning_effort":"high"}'
   --additional-config
   "{\"glm53_kda_decode_backend\":\"${kda_decode_backend}\",\"kda_prefill_backend\":\"${kda_prefill_backend}\"}"
   --compilation-config
