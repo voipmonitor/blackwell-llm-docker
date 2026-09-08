@@ -33,7 +33,7 @@ These source refs are **implemented**, not by themselves release approval.
 |---|---|---|
 | `vllm-source` | [voipmonitor/vllm](https://github.com/voipmonitor/vllm/tree/integration/glm-fp8-checkpoint-serving-20260908) | `f21c11418ebf6db5c914b2fd56dd5119fe2fe1e0` |
 | `b12x-source` | [voipmonitor/b12x](https://github.com/voipmonitor/b12x/tree/integration/glm-fp8-checkpoint-serving-20260908) | `3edbcbce70f491741b82f5eab9c1b30b39447228` |
-| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/integration/glm-fp8-checkpoint-serving-20260908) | `6b6074cb957f47f1cfee073662c13edcd6a43385` |
+| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/integration/glm-fp8-checkpoint-serving-20260908) | `338c0d28a3c78a2401a382607b8951a82121366f` |
 
 Clone the `integration/glm-fp8-checkpoint-serving-20260908` branch of each
 repository into its checkout directory, then verify `git rev-parse HEAD`
