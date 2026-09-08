@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.7
+
+ARG RUNTIME_IMAGE=voipmonitor/vllm@sha256:93ac5228f1cbde2182ca294d8b479259144742af2756a49ff207dd245429bf43
+FROM ${RUNTIME_IMAGE} AS native-build
+
+COPY --from=vllm_source / /tmp/vllm-source/
+COPY --from=cutlass_source / /tmp/cutlass-source/
+WORKDIR /tmp/vllm-source
+
+ENV VLLM_CUTLASS_SRC_DIR=/tmp/cutlass-source \
+    TORCH_CUDA_ARCH_LIST=12.0a \
+    CUDA_VISIBLE_DEVICES=""
+
+# FetchContent applies the source-locked FlashKDA patch. No external FlashKDA
+# source override is supplied: this exercises the ordinary vLLM build contract.
+RUN --mount=type=cache,id=glm53-managed-checkpoint-native,target=/tmp/flashkda-managed-build,sharing=locked \
+    test -z "${FLASH_KDA_SRC_DIR:-}" \
+    && cmake -S . -B /tmp/flashkda-managed-build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=120 \
+      -DVLLM_TARGET_DEVICE=cuda \
+      -DVLLM_PYTHON_EXECUTABLE=/opt/venv/bin/python -DNVCC_THREADS=2 \
+    && cmake --build /tmp/flashkda-managed-build --target _flashkda_C --parallel 2 \
+    && install -Dm755 /tmp/flashkda-managed-build/_flashkda_C.abi3.so \
+      /artifacts/_flashkda_C.abi3.so \
+    && git -C /tmp/flashkda-managed-build/_deps/flashkda-src rev-parse HEAD \
+      > /artifacts/flashkda-base.commit \
+    && sha256sum cmake/external_projects/patches/flashkda-packed-checkpoints.patch \
+      > /artifacts/flashkda-patch.sha256 \
+    && sha256sum /artifacts/_flashkda_C.abi3.so \
+      > /artifacts/flashkda-extension.sha256
+
+FROM scratch AS artifact
+COPY --from=native-build /artifacts/ /

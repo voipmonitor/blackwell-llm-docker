@@ -1,0 +1,75 @@
+# syntax=docker/dockerfile:1.7
+ARG BASE_IMAGE=voipmonitor/vllm@sha256:93ac5228f1cbde2182ca294d8b479259144742af2756a49ff207dd245429bf43
+FROM ${BASE_IMAGE} AS lmcache-build
+COPY --from=source_bundles /lmcache.bundle /source-bundles/lmcache.bundle
+COPY --from=source_bundles /uv /source-bundles/uv
+COPY install_source_bundle.sh /build-tools/install_source_bundle.sh
+ARG LMCACHE_COMMIT
+ARG LMCACHE_TREE
+ARG LMCACHE_BUNDLE_SHA256
+ARG LMCACHE_VERSION
+ARG UV_SHA256
+WORKDIR /tmp
+RUN test "$(sha256sum /source-bundles/lmcache.bundle | cut -d' ' -f1)" = "${LMCACHE_BUNDLE_SHA256}" \
+    && test "$(sha256sum /source-bundles/uv | cut -d' ' -f1)" = "${UV_SHA256}" \
+    && bash /build-tools/install_source_bundle.sh /source-bundles/lmcache.bundle \
+        "${LMCACHE_COMMIT}" "${LMCACHE_TREE}" /tmp/lmcache-source \
+    && /source-bundles/uv pip install --python /opt/venv/bin/python \
+        'setuptools>=77.0.3,<81' setuptools_scm wheel packaging ninja \
+    && cd /tmp/lmcache-source \
+    && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_LMCACHE="${LMCACHE_VERSION}" \
+        BUILD_WITH_CUDA=1 LMCACHE_CUDA_MAJOR=13 TORCH_CUDA_ARCH_LIST=12.0 \
+        ENABLE_CXX11_ABI=1 MAX_JOBS=2 NVCC_THREADS=auto \
+        /source-bundles/uv run --no-project --python /opt/venv/bin/python \
+        /opt/venv/bin/python -m pip wheel --no-build-isolation --no-deps --wheel-dir /artifacts . \
+    && make -C csrc/cumem_ipc_interposer CUDA_HOME=/usr/local/cuda \
+    && install -Dm755 csrc/cumem_ipc_interposer/liblmcache_cumem_shareable.so /artifacts/liblmcache_cumem_shareable.so \
+    && cd /artifacts && sha256sum *.whl *.so > SHA256SUMS
+
+FROM ${BASE_IMAGE}
+ARG SOURCE_LOCK_SHA256
+ARG CACHE_FINGERPRINT
+# One source installation layer above the immutable flattened runtime.
+RUN --mount=type=bind,from=source_bundles,source=/,target=/source-bundles,ro \
+    --mount=type=bind,from=native_artifact,source=/,target=/flashkda-artifacts,ro \
+    --mount=type=bind,from=lmcache-build,source=/artifacts,target=/lmcache-artifacts,ro \
+    --mount=type=bind,source=.,target=/build-inputs,ro \
+    bash /build-inputs/install_glm53_source_locked.sh
+
+ENV LMCACHE_EXPECTED_SOURCE_ROOT=/opt/venv/lib/python3.12/site-packages/lmcache \
+    LOCAL_INFERENCE_CACHE_FINGERPRINT=${CACHE_FINGERPRINT} \
+    XDG_CACHE_HOME=/cache/jit/${CACHE_FINGERPRINT} \
+    VLLM_CACHE_ROOT=/cache/jit/${CACHE_FINGERPRINT}/vllm \
+    VLLM_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/vllm \
+    TRITON_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/triton \
+    TORCHINDUCTOR_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/torchinductor \
+    CUTE_DSL_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/cute-dsl \
+    B12X_CUTE_COMPILE_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/b12x/cute \
+    B12X_COMPILE_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/b12x/compile \
+    SPARKINFER_COMPILE_CACHE_DIR=/cache/jit/${CACHE_FINGERPRINT}/b12x/compile \
+    CUDA_CACHE_PATH=/cache/jit/${CACHE_FINGERPRINT}/cuda \
+    VLLM_GLM53_L2_PREFETCH=1 VLLM_GLM53_L2_PREFETCH_PERSIST_MB=0 \
+    VLLM_GLM53_DFLASH_ATTN=1 VLLM_CAUSAL_CONV1D_UPDATE_HOIST=1 \
+    VLLM_GLM53_KDA_GATE_SIDE_STREAM=1 VLLM_GLM53_MTP_DRAFT_HEAD=nvfp4 \
+    VLLM_MXFP8_LM_HEAD=0 VLLM_MTP_NVFP4_LM_HEAD=0 VLLM_LM_HEAD_A16=0 \
+    VLLM_USE_FLASHINFER_SAMPLER=1 VLLM_PCIE_TWOSHOT_ALLREDUCE_MAX_SIZE=768KB \
+    VLLM_GLM53_ONLINE_DENSE_MXFP8=0 VLLM_DISABLE_SHARED_EXPERTS_STREAM=0 \
+    VLLM_DISABLED_KERNELS=MarlinFP8ScaledMMLinearKernel \
+    B12X_DYNAMIC_SPLIT_ROUTE_COMPUTE=1 B12X_DYNAMIC_DIRECT_EXPERT_SCALES=1 \
+    B12X_DYNAMIC_SPLIT_LOW_SMEM=1 B12X_DYNAMIC_SKIP_SPLIT_BARRIER_RESET=1 \
+    B12X_DYNAMIC_SPLIT_FAST_PREPARE=1 B12X_DYNAMIC_WORK_SOURCE=persistent_grid \
+    B12X_DYNAMIC_SPLIT_COMPUTE_MAC=224 B12X_PCIE_ONESHOT_THREADS=512 \
+    B12X_PCIE_ONESHOT_BLOCK_LIMIT=4 B12X_PCIE_ONESHOT_PDL=1 B12X_MHC_PDL=1 \
+    NCCL_MIN_NCHANNELS=16 NCCL_MAX_NCHANNELS=16 NCCL_BUFFSIZE=2097152 \
+    OMP_NUM_THREADS=1 MAX_NUM_BATCHED_TOKENS=4096 MAX_CUDAGRAPH_CAPTURE_SIZE=256 \
+    CUDAGRAPH_CAPTURE_SIZES="1 2 4 8 16 32 40 48 64 96 128 192 256" \
+    PREFILL_SCHEDULE_INTERVAL=1 FAIRNESS_ENGINE=compute_share \
+    PREFILL_COMPUTE_SHARE=0.4 GLM53_KDA_PREFILL_BACKEND=flashkda
+LABEL local-inference.status="research-only" \
+    local-inference.runtime.source-lock.path="/opt/glm53-flash/source.lock" \
+    local-inference.runtime.source-lock.sha256="${SOURCE_LOCK_SHA256}" \
+    local-inference.runtime.cache-fingerprint="${CACHE_FINGERPRINT}" \
+    local-inference.release.overlay2-rootfs-layers="2"
+WORKDIR /
+ENTRYPOINT ["/usr/local/bin/serve-glm53-flash.sh"]
+CMD []
