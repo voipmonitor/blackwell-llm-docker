@@ -101,7 +101,7 @@ Extract the parent manifest and prepare the overlay from a clean vLLM checkout:
 ```bash
 git -C vllm-source fetch https://github.com/voipmonitor/vllm.git \
   integration/glm-scheduler-hardening-20260908
-git -C vllm-source checkout --detach 4ea5c3323e005ebb3e9d6d7e1ef99e713e6356e9
+git -C vllm-source checkout --detach 9ff42d83938e74018f9c255e8cfa7ca6df6921b0
 docker run --rm --entrypoint /bin/cat \
   voipmonitor/vllm@sha256:f5f121e37fd2afbb6f8f036e7eb627435cfb736de0a4420306dc2a25b6631669 \
   /opt/glm53-flash/source.lock > r28.source.lock
