@@ -122,6 +122,8 @@ def image_labels(
             + ".git"
         )
         labels[f"local-inference.{name}.branch"] = "image-source"
+    if "vllm.version" in lock:
+        labels["local-inference.vllm.version"] = lock["vllm.version"]
     for key in ("base.commit", "patch.sha256", "extension.sha256"):
         labels[f"local-inference.flashkda.{key}"] = lock[f"flashkda.{key}"]
     return labels

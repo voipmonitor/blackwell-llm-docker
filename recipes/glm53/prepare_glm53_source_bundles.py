@@ -71,6 +71,9 @@ def main() -> None:
     lock["lmcache.version"] = (
         f"0.5.5.dev0+glm53checkpoints.{lock['lmcache.commit'][:8]}"
     )
+    lock["vllm.version"] = (
+        f"0.26.1rc0+glm53.{args.release_version}.vllm{lock['vllm.commit'][:8]}"
+    )
     patch = "cmake/external_projects/patches/flashkda-packed-checkpoints.patch"
     lock["flashkda.base.commit"] = (
         (args.native_artifact / "flashkda-base.commit").read_text().strip()
@@ -93,6 +96,7 @@ def main() -> None:
         "source_locked_image_labels.py",
         "install_source_bundle.sh",
         "install_glm53_source_locked.sh",
+        "install_vllm_source_version.py",
         "serve-glm53-flash-nvfp4-dflash2.sh",
         "serve-glm53-flash-nvfp4-dflash2-scheduler-qos.sh",
         "serve-glm53-flash-lmcache.sh",

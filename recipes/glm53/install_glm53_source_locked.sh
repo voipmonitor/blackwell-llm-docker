@@ -33,6 +33,9 @@ verify /opt/glm53-flash/vllm/cmake/external_projects/patches/flashkda-packed-che
 readonly python=/opt/venv/bin/python
 readonly uv=/source-bundles/uv
 readonly lmcache_package=/opt/venv/lib/python3.12/site-packages/lmcache
+"$uv" run --no-project --python "$python" "$python" \
+    /build-inputs/install_vllm_source_version.py /opt/glm53-flash/vllm \
+    "$(value vllm.version)"
 torch_before=$("$uv" run --no-project --python "$python" "$python" -c \
     'import torch; print(f"{torch.__version__}|{torch.version.cuda}|{int(torch._C._GLIBCXX_USE_CXX11_ABI)}")')
 test "$torch_before" = '2.13.0|13.3|1'
