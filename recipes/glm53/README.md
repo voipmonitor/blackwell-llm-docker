@@ -35,7 +35,7 @@ These source refs are **implemented**, not by themselves release approval.
 |---|---|---|
 | `vllm-source` | [voipmonitor/vllm](https://github.com/voipmonitor/vllm/tree/integration/jovian-shared-serving-20260909-r29) | `2c31280de696291bdf458cd49b959de0d3f2a15f` |
 | `b12x-source` | [voipmonitor/b12x](https://github.com/voipmonitor/b12x/tree/release/jovian-judgement-20260909-r29) | `3edbcbce70f491741b82f5eab9c1b30b39447228` |
-| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/release/jovian-judgement-20260909-r29) | `1a0048efd2b7461db79c26fda389bad506b12b1f` |
+| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/release/jovian-judgement-20260909-r29) | `dcd6ec92b23c7da14a46e0b9bf23a078969ddd4d` |
 
 Clone each linked branch into its checkout directory, then verify `git rev-parse HEAD`
 against the table. Complete checkouts are required; do not use shallow clones
@@ -133,6 +133,15 @@ when serving multiple models. DS4 engine-driven TP2 with a model limit of at
 least one million tokens defaults to utilization 0.970; GPU-only uses 0.975.
 These are reference deployment profiles for 96 GiB GPUs, not universal memory
 capacity or topology guarantees. Validate admission on the deployment hardware.
+
+Use an empty external-cache namespace when adopting the paged-gather metadata
+correction in LMCache #50. The source revision in the table keeps every batch's
+pinned block-ID snapshot immutable until its asynchronous copy completes.
+Payloads exported by a build without that correction can contain bytes from
+different GPU pages while retaining valid storage keys. DS4 filesystem keys
+do not automatically invalidate those payloads on a source update. Use a
+separate Docker cache volume or L2 directory; do not delete another service's
+cache or treat a successful read as proof that an existing payload is valid.
 
 ### Python scheduler overlay
 
