@@ -28,10 +28,14 @@ max_model_len=${MAX_MODEL_LEN:-1048576}
 max_num_batched_tokens=${MAX_NUM_BATCHED_TOKENS:-4096}
 prefill_schedule_interval=${PREFILL_SCHEDULE_INTERVAL:-8}
 prefill_interval_from_cli=0
+chat_defaults_from_cli=0
 for argument in "$@"; do
   case "${argument}" in
     --prefill-schedule-interval | --prefill-schedule-interval=*)
       prefill_interval_from_cli=1
+      ;;
+    --default-chat-template-kwargs | --default-chat-template-kwargs=*)
+      chat_defaults_from_cli=1
       ;;
   esac
 done
@@ -236,14 +240,18 @@ cmd=(
   --enable-auto-tool-choice
   --tool-call-parser glm47
   --reasoning-parser glm45
-  # GLM's checkpoint template otherwise selects max reasoning. Server defaults
-  # apply only when the request omits an explicit reasoning effort.
-  --default-chat-template-kwargs '{"reasoning_effort":"high"}'
   --additional-config
   "{\"glm53_kda_decode_backend\":\"${kda_decode_backend}\",\"kda_prefill_backend\":\"${kda_prefill_backend}\"}"
   --compilation-config
   "{\"cudagraph_mode\":\"${cudagraph_mode}\"}"
 )
+
+if ((chat_defaults_from_cli == 0)); then
+  # Z.ai recommends clearing completed-turn reasoning for chat. The template
+  # retains reasoning after the last user message, including tool follow-ups.
+  # Request template kwargs remain authoritative over these server defaults.
+  cmd+=(--default-chat-template-kwargs '{"reasoning_effort":"high","clear_thinking":true}')
+fi
 
 if ((prefill_interval_from_cli == 0)); then
   cmd+=(--prefill-schedule-interval "${prefill_schedule_interval}")

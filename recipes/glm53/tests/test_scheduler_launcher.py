@@ -1,5 +1,6 @@
 """Validate scheduler environment mapping without loading models or using GPUs."""
 
+import json
 import os
 import shlex
 import subprocess
@@ -183,7 +184,7 @@ def test_fairness_interval_uses_cli_precedence(launch):
     )
 
 
-def test_base_interval_is_not_duplicated_and_reasoning_is_high(launch):
+def test_base_interval_is_not_duplicated_and_chat_defaults_are_explicit(launch):
     result = launch(
         {"PREFILL_SCHEDULE_INTERVAL": "invalid"},
         ["--prefill-schedule-interval", "1"],
@@ -192,10 +193,25 @@ def test_base_interval_is_not_duplicated_and_reasoning_is_high(launch):
     assert result.returncode == 0, result.stderr
     arguments = shlex.split(result.stdout.split("launch:", 1)[1])
     assert arguments.count("--prefill-schedule-interval") == 1
-    assert (
+    assert json.loads(
         arguments[arguments.index("--default-chat-template-kwargs") + 1]
-        == '{"reasoning_effort":"high"}'
-    )
+    ) == {"reasoning_effort": "high", "clear_thinking": True}
+
+
+@pytest.mark.parametrize("equals", [False, True])
+def test_explicit_chat_defaults_are_forwarded_without_a_second_object(launch, equals):
+    value = '{"reasoning_effort":"max","clear_thinking":false}'
+    option = "--default-chat-template-kwargs"
+    supplied = [f"{option}={value}"] if equals else [option, value]
+    result = launch(arguments=supplied, base=True)
+    assert result.returncode == 0, result.stderr
+    arguments = shlex.split(result.stdout.split("launch:", 1)[1])
+    settings = [item for item in arguments if item.split("=", 1)[0] == option]
+    assert len(settings) == 1
+    if equals:
+        assert settings == [f"{option}={value}"]
+    else:
+        assert arguments[arguments.index(option) + 1] == value
 
 
 def test_graph_capture_controls_are_preserved(launch):

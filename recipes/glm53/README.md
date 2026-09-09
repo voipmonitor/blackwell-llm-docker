@@ -203,11 +203,28 @@ The latter checkpoint contains offline MXFP8 draft weights. A changed model or
 runtime identity cannot reuse an incompatible external recurrent checkpoint.
 
 The GLM launcher supplies `--default-chat-template-kwargs
-'{"reasoning_effort":"high"}'`. A chat request can override that default with
+'{"reasoning_effort":"high","clear_thinking":true}'`.
+A chat request can override the reasoning default with
 `"reasoning_effort":"max"`, `"high"`, or `"low"`; this does not change
 `max_tokens` or the parser. Without a server/request override, the checkpoint's
 chat template selects `max`. Direct `vllm serve` commands bypass this launcher's
 defaults and must provide the option themselves.
+
+The `clear_thinking=true` chat profile follows the
+[model author's deployment guidance](https://huggingface.co/zai-org/GLM-5.3-Flash#note).
+It omits reasoning from assistant messages before the last user message while
+retaining their visible answers and tool calls. Reasoning within the active
+user turn, including tool-result follow-ups, remains present. It does not
+disable reasoning generation or discard tool results.
+
+Removing completed-turn reasoning changes the rendered token prefix. A cached
+response containing that reasoning cannot be reused past the first changed
+token; instruction and matching input-prefix checkpoints remain usable.
+Applications deliberately retaining reasoning can send
+`"chat_template_kwargs":{"clear_thinking":false}`. An explicit server CLI
+`--default-chat-template-kwargs` object replaces the launcher's object instead
+of being duplicated. These defaults apply to the GLM entrypoint, not DS4 or
+Qwen native serving commands.
 
 The production scheduler budget is 4096 tokens, OMP threads1, NCCL channels16
 with 2 MiB buffers, and `FULL_AND_PIECEWISE` CUDA graphs. GPU-local attention
