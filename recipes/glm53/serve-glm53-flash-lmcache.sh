@@ -23,6 +23,7 @@ require_positive_integer() {
 }
 
 readonly mp_host=${LMCACHE_MP_HOST:-127.0.0.1}
+readonly http_host=${LMCACHE_HTTP_HOST:-127.0.0.1}
 readonly mp_port=${LMCACHE_MP_PORT:-5555}
 readonly http_port=${LMCACHE_HTTP_PORT:-8085}
 readonly prometheus_port=${LMCACHE_PROMETHEUS_PORT:-9095}
@@ -48,6 +49,26 @@ if [[ ! ${mp_host} =~ ^[A-Za-z0-9_.:-]+$ ]]; then
     "${mp_host}" >&2
   exit 2
 fi
+if [[ ! ${http_host} =~ ^[A-Za-z0-9_.:][A-Za-z0-9_.:-]*$ ]]; then
+  printf 'LMCACHE_HTTP_HOST contains unsupported characters: %s\n' \
+    "${http_host}" >&2
+  exit 2
+fi
+# A wildcard bind needs a concrete loopback address for the readiness probe.
+http_probe_host=${http_host}
+case "${http_host}" in
+  0.0.0.0) http_probe_host=127.0.0.1 ;;
+  ::) http_probe_host=::1 ;;
+esac
+if [[ ${http_probe_host} == *:* ]]; then
+  http_probe_host="[${http_probe_host}]"
+fi
+readonly health_url="http://${http_probe_host}:${http_port}/healthcheck"
+case "${http_host}" in
+  127.* | ::1 | localhost) ;;
+  *) printf '%s\n' 'LMCache HTTP includes administrative APIs; restrict access to a trusted network or authenticated proxy.' >&2 ;;
+esac
+
 case "${transfer_mode}" in
   lmcache_driven | auto | engine_driven) ;;
   *)
@@ -91,7 +112,7 @@ lmcache_server=(
   --l1-use-lazy
   --l1-init-size-gb "${LMCACHE_L1_INIT_SIZE_GB:-2}"
   --eviction-policy LRU
-  --http-host 127.0.0.1
+  --http-host "${http_host}"
   --http-port "${http_port}"
   --prometheus-port "${prometheus_port}"
 )
@@ -216,7 +237,6 @@ fi
 "${lmcache_server[@]}" &
 lmcache_pid=$!
 
-readonly health_url="http://127.0.0.1:${http_port}/healthcheck"
 readonly startup_start=${SECONDS}
 until curl --fail --silent --show-error --max-time 2 "${health_url}" >/dev/null; do
   if ! kill -0 "${lmcache_pid}" 2>/dev/null; then
