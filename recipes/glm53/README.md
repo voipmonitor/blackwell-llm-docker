@@ -102,6 +102,18 @@ uv run --no-project --with pytest python -m pytest -q tests/test_build_contract.
 
 ## Serving contract
 
+### GLM cache HTTP binding
+
+Status: **implemented**. `LMCACHE_HTTP_HOST` selects the LMCache HTTP bind
+address; the default remains `127.0.0.1`. Use `0.0.0.0` for pod-IP metrics
+scraping only behind a trusted-network policy or authenticated proxy: this
+listener also exposes administrative APIs. Readiness probes use a concrete
+address compatible with the selected bind, including IPv6.
+
+Use this explicit setting for HTTP binding. The GLM wrappers do not interpret
+`LMCACHE_EXTRA_ARGS` as a shell command or permit it to override the checkpoint
+transport and ownership configuration.
+
 ### DeepSeek V4 model profiles
 
 Status: **implemented; combined-image serving qualification is tracked separately**.
@@ -211,25 +223,25 @@ The latter checkpoint contains offline MXFP8 draft weights. A changed model or
 runtime identity cannot reuse an incompatible external recurrent checkpoint.
 
 The GLM launcher supplies `--default-chat-template-kwargs
-'{"reasoning_effort":"high","clear_thinking":true}'`.
+'{"reasoning_effort":"high","clear_thinking":false}'`.
 A chat request can override the reasoning default with
 `"reasoning_effort":"max"`, `"high"`, or `"low"`; this does not change
 `max_tokens` or the parser. Without a server/request override, the checkpoint's
 chat template selects `max`. Direct `vllm serve` commands bypass this launcher's
 defaults and must provide the option themselves.
 
-The `clear_thinking=true` chat profile follows the
-[model author's deployment guidance](https://huggingface.co/zai-org/GLM-5.3-Flash#note).
-It omits reasoning from assistant messages before the last user message while
-retaining their visible answers and tool calls. Reasoning within the active
-user turn, including tool-result follow-ups, remains present. It does not
-disable reasoning generation or discard tool results.
+The `clear_thinking=false` agent profile follows the
+[model author's preserved-thinking guidance](https://docs.z.ai/guides/capabilities/thinking-mode#preserved-thinking).
+Clients must return the complete, ordered assistant reasoning with the message
+history. The template retains that reasoning at its original assistant turn;
+it does not insert historical reasoning into the generated turn. The setting
+cannot recover reasoning omitted by the client.
 
 Removing completed-turn reasoning changes the rendered token prefix. A cached
 response containing that reasoning cannot be reused past the first changed
 token; instruction and matching input-prefix checkpoints remain usable.
-Applications deliberately retaining reasoning can send
-`"chat_template_kwargs":{"clear_thinking":false}`. An explicit server CLI
+Chat applications intentionally omitting completed-turn reasoning can send
+`"chat_template_kwargs":{"clear_thinking":true}`. An explicit server CLI
 `--default-chat-template-kwargs` object replaces the launcher's object instead
 of being duplicated. These defaults apply to the GLM entrypoint, not DS4 or
 Qwen native serving commands.

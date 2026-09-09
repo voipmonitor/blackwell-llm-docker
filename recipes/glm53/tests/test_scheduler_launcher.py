@@ -195,12 +195,12 @@ def test_base_interval_is_not_duplicated_and_chat_defaults_are_explicit(launch):
     assert arguments.count("--prefill-schedule-interval") == 1
     assert json.loads(
         arguments[arguments.index("--default-chat-template-kwargs") + 1]
-    ) == {"reasoning_effort": "high", "clear_thinking": True}
+    ) == {"reasoning_effort": "high", "clear_thinking": False}
 
 
 @pytest.mark.parametrize("equals", [False, True])
 def test_explicit_chat_defaults_are_forwarded_without_a_second_object(launch, equals):
-    value = '{"reasoning_effort":"max","clear_thinking":false}'
+    value = '{"reasoning_effort":"max","clear_thinking":true}'
     option = "--default-chat-template-kwargs"
     supplied = [f"{option}={value}"] if equals else [option, value]
     result = launch(arguments=supplied, base=True)

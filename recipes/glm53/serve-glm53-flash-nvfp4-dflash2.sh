@@ -247,10 +247,9 @@ cmd=(
 )
 
 if ((chat_defaults_from_cli == 0)); then
-  # Z.ai recommends clearing completed-turn reasoning for chat. The template
-  # retains reasoning after the last user message, including tool follow-ups.
+  # Preserve reasoning at its original assistant turn for agent continuations.
   # Request template kwargs remain authoritative over these server defaults.
-  cmd+=(--default-chat-template-kwargs '{"reasoning_effort":"high","clear_thinking":true}')
+  cmd+=(--default-chat-template-kwargs '{"reasoning_effort":"high","clear_thinking":false}')
 fi
 
 if ((prefill_interval_from_cli == 0)); then
