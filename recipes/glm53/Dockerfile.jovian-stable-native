@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1.7
+ARG RUNTIME_IMAGE=voipmonitor/vllm@sha256:93ac5228f1cbde2182ca294d8b479259144742af2756a49ff207dd245429bf43
+FROM ${RUNTIME_IMAGE} AS native-build
+COPY --from=vllm_source / /tmp/vllm-source/
+COPY --from=cutlass_source / /tmp/cutlass-source/
+WORKDIR /tmp/vllm-source
+ENV VLLM_CUTLASS_SRC_DIR=/tmp/cutlass-source \
+    TRITON_KERNELS_SRC_DIR=/opt/glm53-flash/vllm/vllm/third_party/triton_kernels \
+    TORCH_CUDA_ARCH_LIST=12.0a CUDA_VISIBLE_DEVICES=""
+ARG BUILD_JOBS=8
+# The caller-owned DeepSeek query output changes the registered stable operator
+# schema. Rebuild that extension; retain the separately qualified FlashKDA and
+# MoE artifacts rather than substituting unrelated native implementations.
+RUN --mount=type=cache,id=jovian-shared-stable-native-cu133,target=/tmp/stable-build,sharing=locked \
+    cmake -S . -B /tmp/stable-build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=120 \
+      -DVLLM_TARGET_DEVICE=cuda \
+      -DVLLM_PYTHON_EXECUTABLE=/opt/venv/bin/python -DNVCC_THREADS=2 \
+    && cmake --build /tmp/stable-build --target _C_stable_libtorch --parallel "${BUILD_JOBS}" \
+    && install -Dm755 /tmp/stable-build/_C_stable_libtorch.abi3.so \
+      /artifacts/_C_stable_libtorch.abi3.so \
+    && cp native-source.identity /artifacts/native-source.identity \
+    && cd /artifacts && sha256sum _C_stable_libtorch.abi3.so > SHA256SUMS
+FROM scratch AS artifact
+COPY --from=native-build /artifacts/ /
