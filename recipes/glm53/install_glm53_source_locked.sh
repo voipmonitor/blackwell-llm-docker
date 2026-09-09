@@ -65,6 +65,16 @@ for directory in /opt/glm53-flash/vllm/vllm /opt/venv/lib/python3.12/site-packag
         "$directory/_C_stable_libtorch.abi3.so"
 done
 install -Dm644 /flashkda-artifacts/native-source.identity /opt/glm53-flash/native-source.identity
+# One import root per library: callers that clear PYTHONPATH must not reach
+# Python packages inherited from the runtime foundation. Canonical source
+# directories already retain every required native artifact and package data.
+test -d /opt/venv/lib/python3.12/site-packages/vllm
+test -d /opt/venv/lib/python3.12/site-packages/b12x
+test ! -L /opt/venv/lib/python3.12/site-packages/vllm
+test ! -L /opt/venv/lib/python3.12/site-packages/b12x
+rm -r -- /opt/venv/lib/python3.12/site-packages/vllm /opt/venv/lib/python3.12/site-packages/b12x
+ln -s /opt/glm53-flash/vllm/vllm /opt/venv/lib/python3.12/site-packages/vllm
+ln -s /opt/glm53-flash/b12x/b12x /opt/venv/lib/python3.12/site-packages/b12x
 install -Dm755 /source-bundles/lmcache-mp-wrapper.sh /usr/local/bin/lmcache-mp-wrapper.sh
 install -Dm755 /build-inputs/serve-ds4-jovian.sh /usr/local/bin/serve-ds4-jovian.sh
 
@@ -81,8 +91,10 @@ install -Dm644 "$lock" /opt/glm53-flash/source.lock
 mkdir -p /tmp/native-import-driver-stub
 ln -s /usr/local/cuda/lib64/stubs/libcuda.so /tmp/native-import-driver-stub/libcuda.so.1
 LD_LIBRARY_PATH="/tmp/native-import-driver-stub:${LD_LIBRARY_PATH:-}" \
+PYTHONPATH= \
 CUDA_VISIBLE_DEVICES= "$uv" run --no-project --python "$python" "$python" -c '
 import importlib.metadata as metadata
+from pathlib import Path
 import torch, vllm, b12x, vllm._flashkda_C
 import vllm._C_stable_libtorch
 import vllm.vllm_flash_attn.layers.rotary, vllm.third_party.triton_kernels.topk
@@ -91,6 +103,8 @@ from lmcache.integration.vllm.recurrent_checkpoint_connector import LMCacheRecur
 assert (torch.__version__, torch.version.cuda, torch._C._GLIBCXX_USE_CXX11_ABI) == ("2.13.0", "13.3", True)
 print("LMCache wheel:", metadata.version("lmcache"))
 print("Source imports:", vllm.__file__, b12x.__file__)
+assert Path(vllm.__file__).resolve() == Path("/opt/glm53-flash/vllm/vllm/__init__.py")
+assert Path(b12x.__file__).resolve() == Path("/opt/glm53-flash/b12x/b12x/__init__.py")
 schema = str(torch.ops._C.fused_deepseek_v4_qnorm_rope_kv_rope_quant_insert.default._schema)
 assert "q_out" in schema and "q_head_padded" not in schema, schema
 assert schema.endswith("-> ()"), schema
