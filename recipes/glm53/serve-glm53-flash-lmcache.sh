@@ -64,10 +64,17 @@ if [[ ${http_probe_host} == *:* ]]; then
   http_probe_host="[${http_probe_host}]"
 fi
 readonly health_url="http://${http_probe_host}:${http_port}/healthcheck"
-case "${http_host}" in
-  127.* | ::1 | localhost) ;;
-  *) printf '%s\n' 'LMCache HTTP includes administrative APIs; restrict access to a trusted network or authenticated proxy.' >&2 ;;
-esac
+http_loopback=0
+if [[ ${http_host} == ::1 || ${http_host} == localhost ]]; then
+  http_loopback=1
+elif [[ ${http_host} =~ ^127\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] &&
+  ((10#${BASH_REMATCH[1]} <= 255 && 10#${BASH_REMATCH[2]} <= 255 &&
+    10#${BASH_REMATCH[3]} <= 255)); then
+  http_loopback=1
+fi
+if ((http_loopback == 0)); then
+  printf '%s\n' 'LMCache HTTP includes administrative APIs; restrict access to a trusted network or authenticated proxy.' >&2
+fi
 
 case "${transfer_mode}" in
   lmcache_driven | auto | engine_driven) ;;
@@ -208,7 +215,10 @@ readonly input_token_budget=$((
   target_token_budget + draft_slots_per_request * max_num_seqs
 ))
 export MAX_NUM_BATCHED_TOKENS=${input_token_budget}
-export KV_CACHE_DTYPE=${lmcache_kv_cache_dtype}
+case "${lmcache_kv_cache_dtype}" in
+  fp8_ds_mla) export KV_CACHE_DTYPE=fp8 ;;
+  *) export KV_CACHE_DTYPE=${lmcache_kv_cache_dtype} ;;
+esac
 export VLLM_GLM53_SPLIT_TARGET_BLOCK_SIZE="${VLLM_GLM53_SPLIT_TARGET_BLOCK_SIZE:-auto}"
 export VLLM_GLM53_SPLIT_MAMBA_BLOCK_SIZE="${VLLM_GLM53_SPLIT_MAMBA_BLOCK_SIZE:-auto}"
 vllm_extra_args+=(--max-num-scheduled-tokens "${target_token_budget}")

@@ -38,6 +38,39 @@ readonly lmcache_kv_cache_dtype=${LMCACHE_KV_CACHE_DTYPE:-nvfp4_ds_mla}
 readonly vllm_kv_cache_dtype=${LMCACHE_VLLM_KV_CACHE_DTYPE:-${lmcache_kv_cache_dtype}}
 readonly instance_id=${LMCACHE_INSTANCE_ID:-glm53-jovian-judgement-lmcache}
 readonly checkpoint_identity=${LMCACHE_CHECKPOINT_IDENTITY:-}
+checkpoint_policy_supplied=0
+checkpoint_policy_pending=0
+checkpoint_cli_policy=auto
+for arg in "$@"; do
+  if ((checkpoint_policy_pending)); then
+    checkpoint_cli_policy=${arg}
+    checkpoint_policy_pending=0
+    continue
+  fi
+  case "${arg}" in
+    --recurrent-checkpoint-policy | --recurrent-checkpoint-policy=*)
+      if ((checkpoint_policy_supplied)); then
+        printf 'Specify --recurrent-checkpoint-policy only once\n' >&2
+        exit 2
+      fi
+      checkpoint_policy_supplied=1
+      if [[ ${arg} == *=* ]]; then
+        checkpoint_cli_policy=${arg#*=}
+      else
+        checkpoint_policy_pending=1
+      fi
+      ;;
+  esac
+done
+if ((checkpoint_policy_pending)); then
+  printf '%s\n' '--recurrent-checkpoint-policy requires a value' >&2
+  exit 2
+fi
+if [[ -n ${checkpoint_identity} && ${checkpoint_cli_policy} != auto &&
+  ${checkpoint_cli_policy} != request_boundaries ]]; then
+  printf 'Semantic checkpoints require request_boundaries or auto\n' >&2
+  exit 2
+fi
 
 require_positive_integer LMCACHE_MP_PORT "${mp_port}"
 require_positive_integer LMCACHE_HTTP_PORT "${http_port}"
@@ -67,10 +100,17 @@ if [[ ${http_probe_host} == *:* ]]; then
   http_probe_host="[${http_probe_host}]"
 fi
 readonly health_url="http://${http_probe_host}:${http_port}/healthcheck"
-case "${http_host}" in
-  127.* | ::1 | localhost) ;;
-  *) printf '%s\n' 'LMCache HTTP includes administrative APIs; restrict access to a trusted network or authenticated proxy.' >&2 ;;
-esac
+http_loopback=0
+if [[ ${http_host} == ::1 || ${http_host} == localhost ]]; then
+  http_loopback=1
+elif [[ ${http_host} =~ ^127\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] &&
+  ((10#${BASH_REMATCH[1]} <= 255 && 10#${BASH_REMATCH[2]} <= 255 &&
+    10#${BASH_REMATCH[3]} <= 255)); then
+  http_loopback=1
+fi
+if ((http_loopback == 0)); then
+  printf '%s\n' 'LMCache HTTP includes administrative APIs; restrict access to a trusted network or authenticated proxy.' >&2
+fi
 
 case "${transfer_mode}" in
   lmcache_driven | auto | engine_driven) ;;
@@ -374,7 +414,9 @@ if [[ -n ${checkpoint_identity} ]]; then
     .kv_connector_module_path = "lmcache.integration.vllm.recurrent_checkpoint_connector" |
     .kv_connector_extra_config["lmcache.mp.checkpoint_identity"] = $identity
   ' <<< "${connector_config}")
-  vllm_extra_args+=(--recurrent-checkpoint-policy request_boundaries)
+  if ((checkpoint_policy_supplied == 0)); then
+    vllm_extra_args+=(--recurrent-checkpoint-policy request_boundaries)
+  fi
   retention_interval=0
 fi
 

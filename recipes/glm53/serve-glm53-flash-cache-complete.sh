@@ -83,6 +83,7 @@ esac
 checkpoint_policy=auto
 policy_value_pending=0
 policy_seen=0
+forwarded_args=()
 for arg in "$@"; do
   if ((policy_value_pending)); then
     checkpoint_policy=${arg}
@@ -99,6 +100,7 @@ for arg in "$@"; do
         policy_value_pending=1
       fi
       ;;
+    *) forwarded_args+=("${arg}") ;;
   esac
 done
 ((policy_value_pending == 0)) || fail '--recurrent-checkpoint-policy requires a value'
@@ -106,6 +108,7 @@ case "${checkpoint_policy}" in
   auto | aligned | request_boundaries) ;;
   *) fail "Unsupported recurrent checkpoint policy: ${checkpoint_policy}" ;;
 esac
+set -- "${forwarded_args[@]}"
 
 # External-cache object geometry owns retention boundaries. GPU-local caching
 # has no transfer-object constraint and accepts vLLM's native retention option.
@@ -367,6 +370,10 @@ case "${cache_mode}" in
     fi
     ;;
 esac
+
+if [[ ${cache_mode} == lmcache ]] || ((policy_seen)); then
+  set -- "$@" --recurrent-checkpoint-policy "${checkpoint_policy}"
+fi
 
 if [[ ${CACHE_CONFIG_DRY_RUN:-0} == 1 ]]; then
   printf 'CACHE_MODE=%q\n' "${cache_mode}"
