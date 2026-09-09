@@ -26,19 +26,18 @@ hashes, Git-bundle hashes and native-artifact identity.
 Host requirements: Git, Docker Buildx and `uv`; no host PyTorch or active GPU
 is needed for image construction. Compilation uses the runtime foundation.
 
-The GLM FP8 checkpoint qualification uses the following published integration
+The GLM/Qwen/DS4 shared serving artifact uses the following published integration
 refs. They preserve contributor history and integration resolutions; simply
 merging a list of open PRs does not reproduce those resolutions automatically.
 These source refs are **implemented**, not by themselves release approval.
 
 | Checkout | Repository | Commit |
 |---|---|---|
-| `vllm-source` | [voipmonitor/vllm](https://github.com/voipmonitor/vllm/tree/integration/glm-fp8-checkpoint-serving-20260908) | `2531689fa50b956d3e1156e1ab80d119aaf34c1e` |
-| `b12x-source` | [voipmonitor/b12x](https://github.com/voipmonitor/b12x/tree/integration/glm-fp8-checkpoint-serving-20260908) | `3edbcbce70f491741b82f5eab9c1b30b39447228` |
-| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/integration/glm-fp8-checkpoint-serving-20260908) | `617a1b47a790de6b86eea92f59deb232a9eff87d` |
+| `vllm-source` | [voipmonitor/vllm](https://github.com/voipmonitor/vllm/tree/integration/jovian-shared-serving-20260909-r29) | `2c31280de696291bdf458cd49b959de0d3f2a15f` |
+| `b12x-source` | [voipmonitor/b12x](https://github.com/voipmonitor/b12x/tree/release/jovian-judgement-20260909-r29) | `3edbcbce70f491741b82f5eab9c1b30b39447228` |
+| `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/release/jovian-judgement-20260909-r29) | `1a0048efd2b7461db79c26fda389bad506b12b1f` |
 
-Clone the `integration/glm-fp8-checkpoint-serving-20260908` branch of each
-repository into its checkout directory, then verify `git rev-parse HEAD`
+Clone each linked branch into its checkout directory, then verify `git rev-parse HEAD`
 against the table. Complete checkouts are required; do not use shallow clones
 for the source bundles. The package trees and compiled FlashKDA artifact are
 reproducible inputs; OCI timestamps and archive metadata are not promised to
@@ -69,9 +68,9 @@ cp ./stable-artifact/_C_stable_libtorch.abi3.so \
 ```
 
 The source identities must match the vLLM `csrc`, `cmake`, and `CMakeLists.txt`
-objects in the final source bundle. The published GLM-only source table above
-does not by itself include the DS4 query-output ABI and serving contracts;
-use a DS4-inclusive source lock for a shared-model build.
+objects in the final source bundle. The source table includes the DS4
+query-output ABI and serving contracts; a binary from a different caller ABI
+is not a compatible substitute.
 
 Freeze source bundles and install them:
 
