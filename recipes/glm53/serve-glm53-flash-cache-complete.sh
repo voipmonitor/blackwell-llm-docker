@@ -109,6 +109,10 @@ case "${checkpoint_policy}" in
   *) fail "Unsupported recurrent checkpoint policy: ${checkpoint_policy}" ;;
 esac
 set -- "${forwarded_args[@]}"
+checkpoint_model=${MODEL:-local-inference-lab/GLM-5.3-Flash-NVFP4}
+if (($# > 0)) && [[ $1 != -* ]]; then
+  checkpoint_model=$1
+fi
 
 # External-cache object geometry owns retention boundaries. GPU-local caching
 # has no transfer-object constraint and accepts vLLM's native retention option.
@@ -284,6 +288,10 @@ case "${cache_mode}" in
     if [[ ${checkpoint_policy} == request_boundaries ]]; then
       [[ ${lmcache_transfer_mode} == engine_driven ]] ||
         fail 'Request-boundary LMCache requires engine_driven transfer'
+    fi
+    # Both external formats need immutable weight identities. Transfer policy
+    # changes the connector, not whether filesystem payloads can be reused.
+    if [[ ${checkpoint_policy} == request_boundaries || ${LMCACHE_L2_ENABLED:-1} == 1 ]]; then
       for arg in "$@"; do
         case "${arg}" in
           --revision | --revision=* | --speculative-config | --speculative-config=*)
@@ -291,11 +299,8 @@ case "${cache_mode}" in
             ;;
         esac
       done
-      if [[ -z ${LMCACHE_CHECKPOINT_IDENTITY:-} && ${CACHE_CONFIG_DRY_RUN:-0} != 1 ]]; then
-        checkpoint_model=${MODEL:-local-inference-lab/GLM-5.3-Flash-NVFP4}
-        if (($# > 0)) && [[ $1 != -* ]]; then
-          checkpoint_model=$1
-        fi
+      resolved_checkpoint_identity=${LMCACHE_CHECKPOINT_IDENTITY:-}
+      if [[ -z ${resolved_checkpoint_identity} && ${CACHE_CONFIG_DRY_RUN:-0} != 1 ]]; then
         identity_speculation=none
         if ((spec_depth > 0)); then
           identity_speculation=mtp
@@ -307,23 +312,26 @@ case "${cache_mode}" in
           --draft-model "${DFLASH_MODEL:-local-inference-lab/GLM-5.3-Flash-DFlash2}" \
           --draft-revision "${DFLASH_MODEL_REVISION:-}" \
           --speculation "${identity_speculation}")
-        LMCACHE_CHECKPOINT_IDENTITY=$(jq -cer '.checkpoint_identity' <<< "${identity_result}")
+        resolved_checkpoint_identity=$(jq -cer '.checkpoint_identity' <<< "${identity_result}")
         MODEL_REVISION=$(jq -er '.model_revision' <<< "${identity_result}")
         DFLASH_MODEL_REVISION=$(jq -er '.draft_model_revision' <<< "${identity_result}")
-        export LMCACHE_CHECKPOINT_IDENTITY MODEL_REVISION DFLASH_MODEL_REVISION
+        export MODEL_REVISION DFLASH_MODEL_REVISION
       fi
-      if [[ -n ${LMCACHE_CHECKPOINT_IDENTITY:-} ]]; then
+      if [[ -n ${resolved_checkpoint_identity} ]]; then
         jq -e --argjson depth "${spec_depth}" '
           type == "object" and
           (.target_revision | type == "string" and test("^([0-9a-f]{40}|[0-9a-f]{64})$")) and
           (.source_revision | type == "string" and test("^([0-9a-f]{40}|[0-9a-f]{64})$")) and
           (.draft_revision | type == "string" and
             (test("^([0-9a-f]{40}|[0-9a-f]{64})$") or ($depth == 0 and . == "")))
-        ' <<< "${LMCACHE_CHECKPOINT_IDENTITY}" >/dev/null ||
-          fail 'Semantic checkpoint identity requires immutable target, source and active draft revisions'
-        LMCACHE_MODEL_REVISION_ID=$(jq -er '.target_revision' <<< "${LMCACHE_CHECKPOINT_IDENTITY}")
-        LMCACHE_DFLASH_REVISION_ID=$(jq -er '.draft_revision' <<< "${LMCACHE_CHECKPOINT_IDENTITY}")
+        ' <<< "${resolved_checkpoint_identity}" >/dev/null ||
+          fail 'Persistent checkpoint identity requires immutable target, source and active draft revisions'
+        LMCACHE_MODEL_REVISION_ID=$(jq -er '.target_revision' <<< "${resolved_checkpoint_identity}")
+        LMCACHE_DFLASH_REVISION_ID=$(jq -er '.draft_revision' <<< "${resolved_checkpoint_identity}")
         export LMCACHE_MODEL_REVISION_ID LMCACHE_DFLASH_REVISION_ID
+        if [[ ${checkpoint_policy} == request_boundaries ]]; then
+          export LMCACHE_CHECKPOINT_IDENTITY=${resolved_checkpoint_identity}
+        fi
       fi
     fi
     if [[ ${lmcache_transfer_mode} == engine_driven && \
@@ -355,11 +363,12 @@ case "${cache_mode}" in
         fail "LMCACHE_L2_ROOT must be an absolute path without quotes or backslashes"
 
       schema=$(sanitize_namespace_component "${LMCACHE_SCHEMA_REVISION:-glm53-r18-cache-v1}")
-      model_id=$(sanitize_namespace_component "${MODEL:-local-inference-lab/GLM-5.3-Flash-NVFP4}")
-      model_revision=$(sanitize_namespace_component "${LMCACHE_MODEL_REVISION_ID:-${MODEL_REVISION:-huggingface-main}}")
+      model_id=$(sanitize_namespace_component "${checkpoint_model}")
+      # Dry-run deliberately performs no model I/O and must not claim identity.
+      model_revision=$(sanitize_namespace_component "${LMCACHE_MODEL_REVISION_ID:-unresolved-dry-run}")
       draft_revision=none
       if [[ ${speculator} == dflash2 ]]; then
-        draft_revision=$(sanitize_namespace_component "${LMCACHE_DFLASH_REVISION_ID:-${DFLASH_MODEL_REVISION:-huggingface-main}}")
+        draft_revision=$(sanitize_namespace_component "${LMCACHE_DFLASH_REVISION_ID:-unresolved-dry-run}")
       fi
       namespace="${schema}/${model_id}-${model_revision}/kv-${kv_cache_quant}/tp-${tp}-dcp-${dcp}-i-${interleave}-g-${resolved_gather}/spec-${speculator}-${spec_depth}-draft-${draft_revision}/chunk-${lmcache_chunk_size}"
       export LMCACHE_L2_PATH="${l2_root%/}/${namespace}"

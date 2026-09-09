@@ -12,6 +12,16 @@ spec = importlib.util.spec_from_file_location(
 )
 labels = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(labels)
+native_spec = importlib.util.spec_from_file_location(
+    "build_jovian_stable_native", RECIPE / "build_jovian_stable_native.py"
+)
+native = importlib.util.module_from_spec(native_spec)
+native_spec.loader.exec_module(native)
+bundle_spec = importlib.util.spec_from_file_location(
+    "prepare_glm53_source_bundles", RECIPE / "prepare_glm53_source_bundles.py"
+)
+bundler = importlib.util.module_from_spec(bundle_spec)
+bundle_spec.loader.exec_module(bundler)
 
 
 @pytest.fixture
@@ -67,6 +77,33 @@ def test_unchanged_dependency_labels_are_preserved_by_inheritance(lock):
     assert dependency not in overrides
     for name in ("vllm", "b12x", "lmcache"):
         assert overrides[f"local-inference.{name}.commit"] == lock[f"{name}.commit"]
+
+
+def test_source_repository_labels_use_manifest_not_inferred_ownership(lock):
+    lock["vllm.repository"] = "https://github.com/voipmonitor/vllm.git"
+    overrides = labels.image_labels(lock, {}, "b" * 64)
+    assert overrides["local-inference.vllm.repo"] == lock["vllm.repository"]
+    assert overrides["local-inference.b12x.repo"] == ""
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://name:secret@example.org/repo.git",
+        "/tmp/repo",
+        "https://example.org/repo?secret=value",
+    ],
+)
+def test_bundle_metadata_rejects_credentials_and_local_paths(url):
+    with pytest.raises(ValueError, match="HTTPS URL without credentials"):
+        bundler.repository_url(url)
+
+
+def test_bundle_metadata_normalizes_github_ssh_url():
+    assert (
+        bundler.repository_url("git@github.com:voipmonitor/vllm.git")
+        == "https://github.com/voipmonitor/vllm.git"
+    )
 
 
 def test_replaced_flashinfer_artifact_does_not_inherit_another_source_ref(lock):
@@ -147,6 +184,17 @@ def test_installed_tree_matches_bundle_without_losing_native(source_bundle):
         assert (
             destination / "extension.so"
         ).read_bytes() == b"qualified native artifact"
+
+
+def test_cutlass_identity_records_the_actual_committed_tree(source_bundle):
+    destination, _, commit, tree = source_bundle
+    assert native.cutlass_identity(destination) == {
+        "cutlass.commit": git(destination, "rev-parse", "HEAD"),
+        "cutlass.tree": git(destination, "rev-parse", "HEAD^{tree}"),
+    }
+    (destination / "module.py").write_text("uncommitted modification\n")
+    with pytest.raises(ValueError, match="committed CUTLASS"):
+        native.cutlass_identity(destination)
 
 
 @pytest.mark.parametrize("mismatch", ["commit", "tree"])

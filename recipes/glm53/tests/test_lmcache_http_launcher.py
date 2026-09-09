@@ -1,6 +1,7 @@
 """Validate sidecar bind arguments without starting a cache or model server."""
 
 import os
+import json
 import shlex
 import subprocess
 from pathlib import Path
@@ -187,3 +188,74 @@ def test_semantic_sidecar_does_not_duplicate_native_checkpoint_policy(args):
         )
         == 1
     )
+
+
+@pytest.mark.parametrize("policy", ["aligned", "request_boundaries"])
+@pytest.mark.parametrize("target_identity", ["a" * 64, "c" * 64])
+def test_persistent_namespace_uses_effective_model_and_content_identity(
+    policy, target_identity
+):
+    source = (RECIPE / "serve-glm53-flash-cache-complete.sh").read_text()
+    resolver = (
+        "/opt/venv/bin/python \\\n"
+        "          /usr/local/libexec/glm53_checkpoint_identity.py"
+    )
+    assert source.count(resolver) == 1
+    source = source.replace(resolver, "identity_fixture")
+    invocation = '\nexec "${cache_launcher}" "$@"'
+    assert source.count(invocation) == 1
+    source = source.replace(
+        invocation,
+        'printf "%s\\0" "${LMCACHE_L2_PATH}" '
+        '"${LMCACHE_CHECKPOINT_IDENTITY:-}" "${MODEL_REVISION}" "$@"',
+    )
+    identity = {
+        "checkpoint_identity": {
+            "target_revision": target_identity,
+            "source_revision": "b" * 64,
+            "draft_revision": "",
+        },
+        "model_revision": "",
+        "draft_model_revision": "",
+    }
+    fixture = (
+        'identity_fixture() { printf "%s\\0" "$@" >&2; '
+        + "printf '%s' "
+        + shlex.quote(json.dumps(identity))
+        + "; }\n"
+    )
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            fixture + source,
+            "cache-launcher-test",
+            "/models/alternate",
+            "--recurrent-checkpoint-policy",
+            policy,
+        ],
+        env={
+            "PATH": os.environ["PATH"],
+            "CACHE_MODE": "lmcache",
+            "LMCACHE_TRANSFER_MODE": "engine_driven",
+            "LMCACHE_L2_ENABLED": "1",
+            "MODEL": "unused/repository",
+            "MTP_DEPTH": "0",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    identity_args = result.stderr.rstrip("\0").split("\0")
+    assert identity_args[identity_args.index("--model") + 1] == "/models/alternate"
+    fields = result.stdout.rstrip("\0").split("\0")
+    assert f"/_models_alternate-{target_identity}/" in fields[0]
+    assert "unused" not in fields[0] and "huggingface-main" not in fields[0]
+    assert bool(fields[1]) == (policy == "request_boundaries")
+    assert fields[2] == ""
+    assert fields[3:] == [
+        "/models/alternate",
+        "--recurrent-checkpoint-policy",
+        policy,
+    ]

@@ -7,6 +7,7 @@ import hashlib
 import shutil
 import subprocess
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def git(root: Path, *args: str) -> str:
@@ -18,10 +19,33 @@ def digest(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def repository_url(value: str) -> str:
+    if value.startswith("git@github.com:"):
+        value = "https://github.com/" + value.removeprefix("git@github.com:")
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or not parsed.path.strip("/")
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or any(c.isspace() for c in value)
+    ):
+        raise ValueError("Source repository must be an HTTPS URL without credentials")
+    return value.rstrip("/")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("vllm", "b12x", "lmcache", "native-artifact", "uv", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
+    for name in ("vllm", "b12x", "lmcache"):
+        parser.add_argument(
+            f"--{name}-repository",
+            help="Published source repository; defaults to origin",
+        )
     parser.add_argument(
         "--release-name", default="jovian-judgement-community-source-locked"
     )
@@ -59,6 +83,10 @@ def main() -> None:
     }
     for name, root in roots.items():
         revision = git(root, "rev-parse", "HEAD")
+        lock[f"{name}.repository"] = repository_url(
+            getattr(args, f"{name}_repository")
+            or git(root, "remote", "get-url", "origin")
+        )
         lock[f"{name}.commit"] = revision
         lock[f"{name}.tree"] = git(root, "rev-parse", "HEAD^{tree}")
         lock[f"{name}.package.tree"] = git(root, "rev-parse", f"HEAD:{name}")

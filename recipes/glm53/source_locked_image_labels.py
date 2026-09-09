@@ -115,11 +115,7 @@ def image_labels(
             ("package-tree", "package.tree"),
         ):
             labels[f"local-inference.{name}.{key}"] = lock[f"{name}.{source_key}"]
-        labels[f"local-inference.{name}.repo"] = (
-            "https://github.com/local-inference-lab/"
-            + ("LMCache" if name == "lmcache" else name)
-            + ".git"
-        )
+        labels[f"local-inference.{name}.repo"] = lock.get(f"{name}.repository", "")
         labels[f"local-inference.{name}.branch"] = "image-source"
     if "vllm.version" in lock:
         labels["local-inference.vllm.version"] = lock["vllm.version"]

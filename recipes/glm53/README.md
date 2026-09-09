@@ -77,6 +77,9 @@ Freeze source bundles and install them:
 ```bash
 uv run --no-project --python 3.12 prepare_glm53_source_bundles.py \
   --vllm ./vllm-source --b12x ./b12x-source --lmcache ./lmcache-source \
+  --vllm-repository https://github.com/voipmonitor/vllm.git \
+  --b12x-repository https://github.com/voipmonitor/b12x.git \
+  --lmcache-repository https://github.com/local-inference-lab/LMCache.git \
   --native-artifact ./flashkda-artifact --uv "$(command -v uv)" \
   --output ./source-bundles \
   --release-name jovian-judgement-community-source-locked \
@@ -89,6 +92,14 @@ The bundle directory must not already exist. Uncommitted serving changes,
 bundle/tree mismatches and native-patch mismatches fail the build. Git bundles
 preserve contributor history; no source squashing or filesystem overlays are
 used to impersonate a committed tree.
+
+Repository labels come from the manifest. The optional `--*-repository`
+arguments identify the published composition repository rather than inferring
+its owner from the package name; without them, the preparer uses the checkout's
+`origin`. URLs containing credentials are rejected. A recorded URL is not
+proof of publication: verify that it serves the locked commit before release.
+Native compilation archives the committed CUTLASS tree and records its actual
+commit and tree instead of inferring a version from the build instructions.
 
 `source_locked_image_labels.py` clears inherited serving claims and replaces
 them from the authenticated manifest. It preserves metadata for unchanged
@@ -113,6 +124,13 @@ address compatible with the selected bind, including IPv6.
 Use this explicit setting for HTTP binding. The GLM wrappers do not interpret
 `LMCACHE_EXTRA_ARGS` as a shell command or permit it to override the checkpoint
 transport and ownership configuration.
+
+Persistent LMCache namespaces resolve the effective positional or `MODEL`
+checkpoint and its immutable model/draft identity in both request-boundary and
+aligned modes. Hub revisions are pinned; local weights and configuration are
+content-hashed before serving. Aligned transfers use that identity only for
+the filesystem namespace, without switching to the semantic connector.
+Dry-run performs no model I/O and labels unavailable identities as unresolved.
 
 ### DeepSeek V4 model profiles
 

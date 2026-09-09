@@ -12,6 +12,15 @@ def git(root: Path, *args: str) -> str:
     return subprocess.check_output(["git", "-C", str(root), *args], text=True).strip()
 
 
+def cutlass_identity(root: Path) -> dict[str, str]:
+    if git(root, "status", "--porcelain"):
+        raise ValueError("Native compilation requires committed CUTLASS sources")
+    return {
+        "cutlass.commit": git(root, "rev-parse", "HEAD"),
+        "cutlass.tree": git(root, "rev-parse", "HEAD^{tree}"),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("vllm", "cutlass", "output"):
@@ -22,6 +31,7 @@ def main() -> None:
         raise ValueError("Native compilation requires committed vLLM sources")
     if args.jobs < 1 or args.output.exists():
         raise ValueError("Use positive build jobs and an absent output directory")
+    cutlass = cutlass_identity(args.cutlass)
     recipe = Path(__file__).resolve().parent
     with tempfile.TemporaryDirectory(prefix="jovian-native-") as temporary:
         root = Path(temporary)
@@ -33,6 +43,24 @@ def main() -> None:
         source = root / "source"
         source.mkdir()
         subprocess.run(["tar", "-xf", str(archive), "-C", str(source)], check=True)
+        cutlass_archive = root / "cutlass.tar"
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(args.cutlass),
+                "archive",
+                cutlass["cutlass.commit"],
+                f"--output={cutlass_archive}",
+            ],
+            check=True,
+        )
+        cutlass_source = root / "cutlass"
+        cutlass_source.mkdir()
+        subprocess.run(
+            ["tar", "-xf", str(cutlass_archive), "-C", str(cutlass_source)],
+            check=True,
+        )
         identity = {"vllm.commit": git(args.vllm, "rev-parse", "HEAD")}
         for key, path in (
             ("csrc.tree", "csrc"),
@@ -42,7 +70,7 @@ def main() -> None:
             identity[f"vllm.{key}"] = git(args.vllm, "rev-parse", f"HEAD:{path}")
         identity.update(
             {
-                "cutlass.version": "4.4.2",
+                **cutlass,
                 "cuda.architecture": "120",
                 "native.target": "_C_stable_libtorch",
             }
@@ -60,7 +88,7 @@ def main() -> None:
                 "--build-context",
                 f"vllm_source={source}",
                 "--build-context",
-                f"cutlass_source={args.cutlass.resolve()}",
+                f"cutlass_source={cutlass_source}",
                 "--build-arg",
                 f"BUILD_JOBS={args.jobs}",
                 "--output",
