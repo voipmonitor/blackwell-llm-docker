@@ -33,7 +33,7 @@ These source refs are **implemented**, not by themselves release approval.
 
 | Checkout | Repository | Commit |
 |---|---|---|
-| `vllm-source` | [voipmonitor/vllm](https://github.com/voipmonitor/vllm/tree/integration/jovian-shared-serving-20260909-r29) | `2c31280de696291bdf458cd49b959de0d3f2a15f` |
+| `vllm-source` | [voipmonitor/vllm](https://github.com/voipmonitor/vllm/tree/integration/jovian-shared-serving-20260909-r29) | `45361846d60622cb5211b902bc893963e5a9eaa6` |
 | `b12x-source` | [voipmonitor/b12x](https://github.com/voipmonitor/b12x/tree/release/jovian-judgement-20260909-r29) | `3edbcbce70f491741b82f5eab9c1b30b39447228` |
 | `lmcache-source` | [local-inference-lab/LMCache](https://github.com/local-inference-lab/LMCache/tree/release/jovian-judgement-20260909-r29) | `dcd6ec92b23c7da14a46e0b9bf23a078969ddd4d` |
 
