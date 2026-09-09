@@ -29,6 +29,7 @@ max_num_batched_tokens=${MAX_NUM_BATCHED_TOKENS:-4096}
 prefill_schedule_interval=${PREFILL_SCHEDULE_INTERVAL:-8}
 prefill_interval_from_cli=0
 chat_defaults_from_cli=0
+generation_defaults_from_cli=0
 for argument in "$@"; do
   case "${argument}" in
     --prefill-schedule-interval | --prefill-schedule-interval=*)
@@ -36,6 +37,13 @@ for argument in "$@"; do
       ;;
     --default-chat-template-kwargs | --default-chat-template-kwargs=*)
       chat_defaults_from_cli=1
+      ;;
+  esac
+  case "${argument//_/-}" in
+    --generation-config | --generation-config=* | \
+      --override-generation-config | --override-generation-config=* | \
+      --override-generation-config.* | --config | --config=*)
+      generation_defaults_from_cli=1
       ;;
   esac
 done
@@ -250,6 +258,13 @@ if ((chat_defaults_from_cli == 0)); then
   # Preserve reasoning at its original assistant turn for agent continuations.
   # Request template kwargs remain authoritative over these server defaults.
   cmd+=(--default-chat-template-kwargs '{"reasoning_effort":"high","clear_thinking":false}')
+fi
+
+if ((generation_defaults_from_cli == 0)); then
+  # The quantized checkpoint can omit Z.ai's generation defaults. Request
+  # sampling remains authoritative; an explicit CLI configuration replaces
+  # this launcher preset without creating duplicate JSON options.
+  cmd+=(--override-generation-config '{"temperature":1.0,"top_p":0.95}')
 fi
 
 if ((prefill_interval_from_cli == 0)); then

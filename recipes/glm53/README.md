@@ -132,6 +132,39 @@ content-hashed before serving. Aligned transfers use that identity only for
 the filesystem namespace, without switching to the semantic connector.
 Dry-run performs no model I/O and labels unavailable identities as unresolved.
 
+### Publisher sampling defaults
+
+Status: **implemented**, with CPU launcher-precedence tests. GPU quality and
+performance measurements identify the sampling parameters actually supplied;
+changing a default is not evidence of a model-quality repair.
+
+The GLM launcher supplies `--override-generation-config
+'{"temperature":1.0,"top_p":0.95}'` because a quantized checkpoint can omit
+the [Z.ai generation defaults](https://huggingface.co/zai-org/GLM-5.3-Flash/blob/main/generation_config.json).
+The DS4 text and Vision launcher uses the same values for its agentic serving
+profile, following the [DeepSeek text deployment recommendation](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731#how-to-run-locally)
+and [Vision agent evaluation settings](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp).
+For non-agentic DS4 use, DeepSeek recommends top-p 1.0 instead.
+
+Explicit API request parameters override these server defaults. Supplying
+`--generation-config`, `--override-generation-config` (including dotted fields)
+or a native `--config` file selects operator policy instead of the launcher
+preset. It is forwarded unchanged; the launcher does not add a competing JSON
+object. DS4 also recognizes these options in `EXTRA_VLLM_ARGS`.
+
+The separately documented Qwen native launch uses its checkpoint's generation
+configuration: temperature 1.0, top-p 0.95 and top-k 20. These match the
+[Qwen thinking-mode defaults](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/main/generation_config.json)
+and are present in the qualified NVFP4 revision
+`b797d2e1160b9596b2570e56c1d3590faa09d4ed`. Qwen's non-thinking profile has
+different recommendations; disabling thinking alone does not automatically
+change request sampling. A command that bypasses the model launcher must set
+its own generation policy or retain the publisher's checkpoint metadata.
+
+GLM's community chat defaults remain `reasoning_effort=high` and
+`clear_thinking=false`. Sampling defaults do not clear historical reasoning,
+truncate prompts, change the target KV dtype or quantize model weights.
+
 ### DeepSeek V4 model profiles
 
 Status: **implemented; combined-image serving qualification is tracked separately**.

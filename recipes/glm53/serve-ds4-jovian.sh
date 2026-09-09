@@ -33,5 +33,27 @@ export LMCACHE_SEPARATE_OBJECT_GROUPS=${LMCACHE_SEPARATE_OBJECT_GROUPS:-1}
 export LMCACHE_L1_GB=${LMCACHE_L1_GB:-24}
 unset NCCL_GRAPH_FILE
 
+generation_defaults_from_cli=0
+for argument in "$@"; do
+  case "${argument//_/-}" in
+    --generation-config | --generation-config=* | \
+      --override-generation-config | --override-generation-config=* | \
+      --override-generation-config.* | --config | --config=*)
+      generation_defaults_from_cli=1 ;;
+  esac
+done
+# The native DS4 launcher also accepts whitespace-separated EXTRA_VLLM_ARGS.
+# Treat a generation configuration there as explicit operator policy.
+extra_options=${EXTRA_VLLM_ARGS:-}
+case " ${extra_options//_/-} " in
+  *' --generation-config'* | *' --override-generation-config'* | *' --config'*)
+    generation_defaults_from_cli=1 ;;
+esac
+if ((generation_defaults_from_cli == 0)); then
+  # DeepSeek recommends these values for agentic text and Vision use. Native
+  # request parameters take precedence over the server's sampling defaults.
+  set -- --override-generation-config '{"temperature":1.0,"top_p":0.95}' "$@"
+fi
+
 exec /usr/local/bin/lmcache-mp-wrapper.sh \
   /opt/glm53-flash/vllm/serve-ds4-flash.sh "$@"

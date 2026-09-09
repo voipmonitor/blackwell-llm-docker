@@ -72,6 +72,38 @@ def test_community_defaults_do_not_enable_interleaving(launch):
     ]
 
 
+def test_glm_sampling_uses_publisher_defaults_without_checkpoint_metadata(launch):
+    result = launch(base=True)
+    assert result.returncode == 0, result.stderr
+    arguments = shlex.split(result.stdout)[3:]
+    option = "--override-generation-config"
+    assert arguments.count(option) == 1
+    assert json.loads(arguments[arguments.index(option) + 1]) == {
+        "temperature": 1.0,
+        "top_p": 0.95,
+    }
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--override-generation-config", '{"top_p":0.8}'],
+        ['--override-generation-config={"top_p":0.8}'],
+        ["--override-generation-config.top_p", "0.8"],
+        ["--override_generation_config.top_p=0.8"],
+        ["--generation-config", "vllm"],
+        ["--generation-config=/operator/model-defaults"],
+        ["--config", "/operator/serve.yaml"],
+    ],
+)
+def test_explicit_generation_policy_is_not_overwritten(launch, arguments):
+    result = launch(arguments=arguments, base=True)
+    assert result.returncode == 0, result.stderr
+    rendered = shlex.split(result.stdout)[3:]
+    assert rendered[-len(arguments) :] == arguments
+    assert '{"temperature":1.0,"top_p":0.95}' not in rendered
+
+
 def test_all_environment_controls_are_forwarded_once(launch):
     values = dict(zip(OPTIONS, ["auto", "responsive", "auto", "decode-aware", "auto"]))
     arguments = argv(launch(values))
