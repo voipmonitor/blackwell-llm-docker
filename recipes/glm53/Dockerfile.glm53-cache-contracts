@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.7
 ARG BASE_IMAGE=voipmonitor/vllm@sha256:93ac5228f1cbde2182ca294d8b479259144742af2756a49ff207dd245429bf43
+ARG FLASHINFER_WHEELS_IMAGE=voipmonitor/vllm@sha256:79edbc91874d9468e3e6268e1584503e3dec55f2a4d3bdd70d5c43e9b41675c7
+FROM ${FLASHINFER_WHEELS_IMAGE} AS flashinfer-wheels
 FROM ${BASE_IMAGE} AS lmcache-build
 COPY --from=source_bundles /lmcache.bundle /source-bundles/lmcache.bundle
 COPY --from=source_bundles /uv /source-bundles/uv
@@ -33,6 +35,7 @@ ARG CACHE_FINGERPRINT
 RUN --mount=type=bind,from=source_bundles,source=/,target=/source-bundles,ro \
     --mount=type=bind,from=native_artifact,source=/,target=/flashkda-artifacts,ro \
     --mount=type=bind,from=lmcache-build,source=/artifacts,target=/lmcache-artifacts,ro \
+    --mount=type=bind,from=flashinfer-wheels,source=/opt/flashinfer-wheels,target=/flashinfer-wheels,ro \
     --mount=type=bind,source=.,target=/build-inputs,ro \
     bash /build-inputs/install_glm53_source_locked.sh
 

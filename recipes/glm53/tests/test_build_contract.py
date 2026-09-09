@@ -69,6 +69,22 @@ def test_unchanged_dependency_labels_are_preserved_by_inheritance(lock):
         assert overrides[f"local-inference.{name}.commit"] == lock[f"{name}.commit"]
 
 
+def test_replaced_flashinfer_artifact_does_not_inherit_another_source_ref(lock):
+    for key in (
+        "commit",
+        "artifact.image",
+        "python.wheel.sha256",
+        "jit-cache.wheel.sha256",
+    ):
+        lock[f"flashinfer.{key}"] = key
+    overrides = labels.image_labels(
+        lock, {"local-inference.flashinfer.ref": "unrelated-source"}, "b" * 64
+    )
+    assert overrides["local-inference.flashinfer.ref"] == ""
+    assert overrides["local-inference.flashinfer.commit"] == "commit"
+    assert overrides["local-inference.flashinfer.artifact.image"] == "artifact.image"
+
+
 def test_ambiguous_source_lock_is_rejected(tmp_path):
     source = tmp_path / "source.lock"
     source.write_text("vllm.commit=a\nvllm.commit=b\n")

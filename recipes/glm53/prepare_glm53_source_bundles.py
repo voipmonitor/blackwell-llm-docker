@@ -89,7 +89,41 @@ def main() -> None:
     lock["flashkda.extension.sha256"] = digest(
         args.native_artifact / "_flashkda_C.abi3.so"
     )
+    native_identity = dict(
+        line.split("=", 1)
+        for line in (args.native_artifact / "native-source.identity")
+        .read_text()
+        .splitlines()
+    )
+    for field, path in (
+        ("csrc.tree", "csrc"),
+        ("cmake.tree", "cmake"),
+        ("cmakelists.blob", "CMakeLists.txt"),
+    ):
+        expected = git(roots["vllm"], "rev-parse", f"HEAD:{path}")
+        if native_identity[f"vllm.{field}"] != expected:
+            raise ValueError(f"Stable native artifact has mismatched {path} sources")
+        lock[f"vllm.native.{field}"] = expected
+    lock["vllm.native.extension.sha256"] = digest(
+        args.native_artifact / "_C_stable_libtorch.abi3.so"
+    )
+    lock["vllm.native.identity.sha256"] = digest(
+        args.native_artifact / "native-source.identity"
+    )
+    lock["flashinfer.commit"] = "803c4664f4771ddc418f20a57f752469a237a825"
+    lock["flashinfer.artifact.image"] = (
+        "voipmonitor/vllm@sha256:79edbc91874d9468e3e6268e1584503e3dec55f2a4d3bdd70d5c43e9b41675c7"
+    )
+    lock["flashinfer.python.wheel.sha256"] = (
+        "3a5b1143d8b933d71881c2d71a2c0677360528344813be1893bafa9f335affea"
+    )
+    lock["flashinfer.jit-cache.wheel.sha256"] = (
+        "9d08679e4ba3cc7c49c5f8035268b7958e9c4d8c7a5e8cd842211da46007809f"
+    )
     docker = Path(__file__).resolve().parent
+    lmcache_launcher = docker.parents[1] / "launchers/lmcache-mp-wrapper.sh"
+    shutil.copy2(lmcache_launcher, args.output / "lmcache-mp-wrapper.sh")
+    lock["launcher.lmcache.sha256"] = digest(lmcache_launcher)
     inputs = (
         "Dockerfile.glm53-cache-contracts",
         "build_glm53_cache_contract_image.sh",
@@ -97,6 +131,9 @@ def main() -> None:
         "install_source_bundle.sh",
         "install_glm53_source_locked.sh",
         "install_vllm_source_version.py",
+        "serve-ds4-jovian.sh",
+        "Dockerfile.jovian-stable-native",
+        "build_jovian_stable_native.py",
         "serve-glm53-flash-nvfp4-dflash2.sh",
         "serve-glm53-flash-nvfp4-dflash2-scheduler-qos.sh",
         "serve-glm53-flash-lmcache.sh",
@@ -113,6 +150,8 @@ def main() -> None:
         f"cu133-torch213-glm53-vllm{lock['vllm.package.tree'][:8]}"
         f"-b12x{lock['b12x.package.tree'][:8]}-lmcache{lock['lmcache.package.tree'][:8]}"
         f"-flashkda{lock['flashkda.extension.sha256'][:8]}"
+        f"-native{lock['vllm.native.extension.sha256'][:8]}"
+        f"-fi{lock['flashinfer.commit'][:8]}"
     )
     target = args.output / "source.lock"
     target.write_text("".join(f"{key}={value}\n" for key, value in lock.items()))

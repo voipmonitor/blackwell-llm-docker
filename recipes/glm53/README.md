@@ -1,4 +1,4 @@
-# GLM-5.3-Flash source-locked serving image
+# Source-locked Jovian Judgement serving image
 
 Status: **implemented; release qualification is tracked separately**.
 
@@ -8,10 +8,12 @@ and installs a source-authenticated FlashKDA operator with packed recurrent
 checkpoint exports. The result has two filesystem layers; serving does not
 require source-code bind mounts.
 
-The runtime foundation supplies the compatible PyTorch, CUDA, NCCL,
-FlashInfer, InstantTensor and vLLM core native binaries. It is pinned by digest
-in both Dockerfiles. Changing that foundation requires ABI and serving
-qualification; this recipe does not rebuild those dependencies from scratch.
+The runtime foundation supplies compatible PyTorch, CUDA, NCCL, InstantTensor
+and unchanged native binaries. The stable vLLM extension is rebuilt together
+with its Python callers because the DeepSeek query-output operator has a
+caller-owned output ABI. FlashInfer Python/JIT wheels come from the immutable
+DS4 Vision artifact identified in the source lock. FlashKDA remains separately
+authenticated. Replacing any native dependency requires serving qualification.
 
 ## Build inputs
 
@@ -57,6 +59,20 @@ The native build resolves the FlashKDA revision and CUTLASS submodule declared
 by vLLM, applies its recorded checkpoint patch, and exports the binary with
 source and checksum records. Do not supply an unpatched `FLASH_KDA_SRC_DIR`.
 
+Build the stable extension from the same committed vLLM tree:
+
+```bash
+uv run --no-project --python 3.12 build_jovian_stable_native.py \
+  --vllm ./vllm-source --cutlass ./cutlass-source --output ./stable-artifact
+cp ./stable-artifact/_C_stable_libtorch.abi3.so \
+   ./stable-artifact/native-source.identity ./flashkda-artifact/
+```
+
+The source identities must match the vLLM `csrc`, `cmake`, and `CMakeLists.txt`
+objects in the final source bundle. The published GLM-only source table above
+does not by itself include the DS4 query-output ABI and serving contracts;
+use a DS4-inclusive source lock for a shared-model build.
+
 Freeze source bundles and install them:
 
 ```bash
@@ -86,6 +102,38 @@ uv run --no-project --with pytest python -m pytest -q tests/test_build_contract.
 ```
 
 ## Serving contract
+
+### DeepSeek V4 model profiles
+
+Status: **implemented; combined-image serving qualification is tracked separately**.
+Use `--entrypoint /usr/local/bin/serve-ds4-jovian.sh` or
+`ds4-jovian.compose.yml`. This selects the same installed packages as GLM,
+with B12X attention/W4A8 MoE and DeepGEMM dense projections. It does not change
+GLM or Qwen backend selection.
+
+`DS4_MODEL_VARIANT=text` selects `deepseek-ai/DeepSeek-V4-Flash-0731`, fixed
+probabilistic DSpark K5 and eight request slots. `DS4_MODEL_VARIANT=vision`
+selects `deepseek-ai/DeepSeek-V4-Flash-Vision-Exp`, K3 and four request slots.
+Both default to TP2/DCP1, FP8 compressed KV, buffered InstantTensor,
+`FULL_AND_PIECEWISE`, and a 4096-token scheduler budget. `MODEL` can name a
+local checkpoint or a Hugging Face repository. The native launcher reports
+the resolved model revision and serving command.
+
+The image has GLM-specific graph and CPU environment defaults. The DS4
+entrypoint deliberately replaces those with `DS4_OMP_NUM_THREADS=2`,
+`DS4_MAX_CUDAGRAPH_CAPTURE_SIZE=auto`, and
+`DS4_CUDAGRAPH_CAPTURE_SIZES=default`. Automatic caps are 48 rows for text K5
+and 16 for Vision K3. Use these DS4-prefixed settings to override that profile;
+changing the GLM environment variables does not change the DS4 graph contract.
+
+GPU-local caching is the default. `LMCACHE_MODE=ram|disk` enables worker-owned
+asynchronous SHM transfer with a CPU-only sidecar, a 24 GiB L1 pool and
+4096-token objects. `ram` does not enable filesystem storage. `disk` uses
+`LMCACHE_L2_PATH` and `LMCACHE_L2_GB`. Select independent cache ports/namespaces
+when serving multiple models. DS4 engine-driven TP2 with a model limit of at
+least one million tokens defaults to utilization 0.970; GPU-only uses 0.975.
+These are reference deployment profiles for 96 GiB GPUs, not universal memory
+capacity or topology guarantees. Validate admission on the deployment hardware.
 
 ### Python scheduler overlay
 

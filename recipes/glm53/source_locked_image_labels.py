@@ -14,7 +14,6 @@ import json
 import sys
 from pathlib import Path
 
-
 DEPENDENCY_PREFIXES = tuple(
     f"local-inference.{name}."
     for name in (
@@ -63,7 +62,7 @@ def image_labels(
     labels.update(
         {
             "org.opencontainers.image.title": "Jovian Judgement community serving",
-            "org.opencontainers.image.description": "GLM-5.3-Flash with FP8 cache, MTP3 and MXFP8 DFlash2; complete Git sources",
+            "org.opencontainers.image.description": "GLM-5.3-Flash, Qwen3.8-Flash-Next and DeepSeek-V4-Flash serving; complete Git sources and model-specific launch profiles",
             "org.opencontainers.image.version": lock["release.version"],
             "org.opencontainers.image.source": "https://github.com/local-inference-lab/blackwell-llm-docker",
             "org.opencontainers.image.revision": lock["vllm.commit"],
@@ -126,6 +125,33 @@ def image_labels(
         labels["local-inference.vllm.version"] = lock["vllm.version"]
     for key in ("base.commit", "patch.sha256", "extension.sha256"):
         labels[f"local-inference.flashkda.{key}"] = lock[f"flashkda.{key}"]
+    if "flashinfer.commit" in lock:
+        labels.update(
+            {
+                key: ""
+                for key in inherited
+                if key.startswith("local-inference.flashinfer.")
+            }
+        )
+        for key in (
+            "commit",
+            "artifact.image",
+            "python.wheel.sha256",
+            "jit-cache.wheel.sha256",
+        ):
+            labels[f"local-inference.flashinfer.{key}"] = lock[f"flashinfer.{key}"]
+        labels["local-inference.flashinfer.version"] = "0.6.18+cu133"
+        labels["local-inference.flashinfer.repo"] = (
+            "https://github.com/voipmonitor/flashinfer.git"
+        )
+    if "vllm.native.extension.sha256" in lock:
+        labels["local-inference.vllm.native.extension.sha256"] = lock[
+            "vllm.native.extension.sha256"
+        ]
+        labels["local-inference.ds4.entrypoint"] = "/usr/local/bin/serve-ds4-jovian.sh"
+        labels["local-inference.ds4.target-backends"] = (
+            "attention:B12X,moe:B12X-W4A8,linear:DeepGEMM"
+        )
     return labels
 
 

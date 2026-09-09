@@ -19,6 +19,11 @@ while IFS='=' read -r key checksum; do
     fi
 done < "$lock"
 verify /flashkda-artifacts/_flashkda_C.abi3.so "$(value flashkda.extension.sha256)"
+verify /flashkda-artifacts/_C_stable_libtorch.abi3.so "$(value vllm.native.extension.sha256)"
+verify /flashkda-artifacts/native-source.identity "$(value vllm.native.identity.sha256)"
+verify /source-bundles/lmcache-mp-wrapper.sh "$(value launcher.lmcache.sha256)"
+verify /flashinfer-wheels/flashinfer_python-0.6.18+cu133-py3-none-any.whl "$(value flashinfer.python.wheel.sha256)"
+verify /flashinfer-wheels/flashinfer_jit_cache-0.6.18+cu133-cp39-abi3-manylinux_2_28_x86_64.whl "$(value flashinfer.jit-cache.wheel.sha256)"
 test "$(cat /flashkda-artifacts/flashkda-base.commit)" = "$(value flashkda.base.commit)"
 test "$(awk '{print $1}' /flashkda-artifacts/flashkda-patch.sha256)" = "$(value flashkda.patch.sha256)"
 
@@ -42,6 +47,7 @@ test "$torch_before" = '2.13.0|13.3|1'
 "$uv" pip install --python "$python" --no-deps --requirement \
     /build-inputs/glm53-r18-lmcache-runtime-requirements.txt
 "$uv" pip install --python "$python" --no-deps --reinstall /lmcache-artifacts/*.whl
+"$uv" pip install --python "$python" --no-deps --reinstall /flashinfer-wheels/*.whl
 # Wheels omit some package data. Install the complete committed package, while
 # retaining the native extensions compiled in the dedicated build stage.
 cp -a /opt/lmcache/source/lmcache/. "$lmcache_package/"
@@ -54,6 +60,13 @@ install -Dm755 /flashkda-artifacts/_flashkda_C.abi3.so \
 install -Dm755 /lmcache-artifacts/liblmcache_cumem_shareable.so \
     /opt/lmcache/lib/liblmcache_cumem_shareable.so
 install -Dm644 /lmcache-artifacts/SHA256SUMS /opt/lmcache/native-artifacts.sha256
+for directory in /opt/glm53-flash/vllm/vllm /opt/venv/lib/python3.12/site-packages/vllm; do
+    install -Dm755 /flashkda-artifacts/_C_stable_libtorch.abi3.so \
+        "$directory/_C_stable_libtorch.abi3.so"
+done
+install -Dm644 /flashkda-artifacts/native-source.identity /opt/glm53-flash/native-source.identity
+install -Dm755 /source-bundles/lmcache-mp-wrapper.sh /usr/local/bin/lmcache-mp-wrapper.sh
+install -Dm755 /build-inputs/serve-ds4-jovian.sh /usr/local/bin/serve-ds4-jovian.sh
 
 install -Dm755 /build-inputs/serve-glm53-flash-nvfp4-dflash2.sh /usr/local/libexec/serve-glm53-flash-nvfp4-dflash2.sh
 install -Dm755 /build-inputs/serve-glm53-flash-nvfp4-dflash2-scheduler-qos.sh /usr/local/bin/serve-glm53-flash-nvfp4-dflash2.sh
@@ -62,16 +75,28 @@ install -Dm755 /build-inputs/serve-glm53-flash-lmcache-cache-complete.sh /usr/lo
 install -Dm755 /build-inputs/serve-glm53-flash-cache-complete.sh /usr/local/bin/serve-glm53-flash.sh
 install -Dm755 /build-inputs/glm53_checkpoint_identity.py /usr/local/libexec/glm53_checkpoint_identity.py
 install -Dm644 "$lock" /opt/glm53-flash/source.lock
+# BuildKit has no NVIDIA driver mount. The stable extension links the driver
+# API, so schema/import inspection uses the toolkit stub only for this process.
+# Runtime imports and kernels are validated separately with the real driver.
+mkdir -p /tmp/native-import-driver-stub
+ln -s /usr/local/cuda/lib64/stubs/libcuda.so /tmp/native-import-driver-stub/libcuda.so.1
+LD_LIBRARY_PATH="/tmp/native-import-driver-stub:${LD_LIBRARY_PATH:-}" \
 CUDA_VISIBLE_DEVICES= "$uv" run --no-project --python "$python" "$python" -c '
 import importlib.metadata as metadata
 import torch, vllm, b12x, vllm._flashkda_C
+import vllm._C_stable_libtorch
 import vllm.vllm_flash_attn.layers.rotary, vllm.third_party.triton_kernels.topk
 import lmcache.cuda_ops, lmcache.lmcache_native, lmcache.lmcache_fs
 from lmcache.integration.vllm.recurrent_checkpoint_connector import LMCacheRecurrentCheckpointConnector
 assert (torch.__version__, torch.version.cuda, torch._C._GLIBCXX_USE_CXX11_ABI) == ("2.13.0", "13.3", True)
 print("LMCache wheel:", metadata.version("lmcache"))
 print("Source imports:", vllm.__file__, b12x.__file__)
+schema = str(torch.ops._C.fused_deepseek_v4_qnorm_rope_kv_rope_quant_insert.default._schema)
+assert "q_out" in schema and "q_head_padded" not in schema, schema
+assert schema.endswith("-> ()"), schema
 '
+unlink /tmp/native-import-driver-stub/libcuda.so.1
+rmdir /tmp/native-import-driver-stub
 # The foundation exposes both venv and system site-packages. Check the exact
 # interpreter search path used by serving, including the system Torch package.
 "$uv" run --no-project --python "$python" "$python" -m pip check
